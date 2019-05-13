@@ -55,7 +55,7 @@ define GetSymbols
     $(ECHO) "Getting symbols from nm"; \
     $(NM) -m $$($1_TARGET) | $(GREP)  "__TEXT" | \
         $(EGREP) -v "non-external|private extern|__TEXT,__eh_frame" | \
-        $(SED) -e  's/.* //' > $$(@D)/$$(basename $$(@F)).symbols; \
+        $(SED) -e  's/.* //' > $$(@D)/$$(basename $$(@F)).symbols || true; \
   fi
 endef
 
