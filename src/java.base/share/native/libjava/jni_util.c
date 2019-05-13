@@ -696,6 +696,7 @@ static jfieldID String_value_ID;        /* String.value */
 static jboolean isJNUEncodingSupported = JNI_FALSE;
 static jboolean jnuEncodingSupported(JNIEnv *env) {
     jboolean exe;
+    if (fastEncoding == NO_ENCODING_YET) InitializeEncoding(env, "UTF-8");
     if (isJNUEncodingSupported == JNI_TRUE) {
         return JNI_TRUE;
     }
@@ -781,6 +782,7 @@ JNIEXPORT void
 InitializeEncoding(JNIEnv *env, const char *encname)
 {
     jclass strClazz = NULL;
+    fprintf(stderr, "InitializeEncoding is now (lazily) called\n");
 
     if ((*env)->EnsureLocalCapacity(env, 3) < 0)
         return;
@@ -854,6 +856,7 @@ NewStringPlatform(JNIEnv *env, const char *str)
 JNIEXPORT jstring JNICALL
 JNU_NewStringPlatform(JNIEnv *env, const char *str)
 {
+    if (fastEncoding == NO_ENCODING_YET) InitializeEncoding(env, "UTF-8");
     if (fastEncoding == FAST_UTF_8)
         return newStringUTF8(env, str);
     if (fastEncoding == FAST_8859_1)
@@ -973,8 +976,10 @@ JNU_GetStringPlatformChars(JNIEnv *env, jstring jstr, jboolean *isCopy)
     if (isCopy)
         *isCopy = JNI_TRUE;
 
-    if (fastEncoding == FAST_UTF_8)
+    if (fastEncoding == NO_ENCODING_YET) InitializeEncoding(env, "UTF-8");
+    if (fastEncoding == FAST_UTF_8) {
         return getStringUTF8(env, jstr);
+    }
     if (fastEncoding == FAST_8859_1)
         return getString8859_1Chars(env, jstr);
     if (fastEncoding == FAST_646_US)
