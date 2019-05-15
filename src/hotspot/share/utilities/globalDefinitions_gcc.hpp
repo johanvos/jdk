@@ -216,6 +216,12 @@ inline int g_isnan(double f) { return isnan(f); }
 #endif
 
 
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#else
+#define TARGET_OS_IPHONE 0
+#endif
+
 // Checking for finiteness
 
 inline int g_isfinite(jfloat  f)                 { return isfinite(f); }
