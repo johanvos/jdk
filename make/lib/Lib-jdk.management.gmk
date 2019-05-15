@@ -23,6 +23,7 @@
 # questions.
 #
 
+ifeq ($(call isTargetOs, ios), false)
 include LibCommon.gmk
 
 # Hook to include the corresponding custom file, if present.
@@ -65,3 +66,4 @@ TARGETS += $(BUILD_LIBMANAGEMENT_EXT)
 
 # Include custom extension post hook
 $(eval $(call IncludeCustomExtension, lib/Lib-jdk.management-post.gmk))
+endif
