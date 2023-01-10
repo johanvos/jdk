@@ -95,7 +95,7 @@ Thread.dumpStack();
         @Override
         public byte[] produce(ConnectionContext context,
                 HandshakeMessage message) throws IOException {
-System.err.println("[ECH] CHECHPRODUCER");
+System.err.println("[ECH] produce ECH for inner ClientHello");
 Thread.dumpStack();
             // The producing happens in client side only.
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
@@ -113,7 +113,7 @@ Thread.dumpStack();
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.warning("IGNORE ECH EXTENSION FOR NOW!");
             }
-            return new byte[]{1,2,3,4};
+            return new byte[]{1};
         }
     }
 

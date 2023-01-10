@@ -308,7 +308,9 @@ final class ClientHello {
 
         @Override
         public void send(HandshakeOutStream hos) throws IOException {
+Thread.dumpStack();
             sendCore(hos);
+hos.putInt8((byte)0xAB);
             extensions.send(hos);       // In TLS 1.3, use of certain
                                         // extensions is mandatory.
         }
@@ -323,6 +325,17 @@ final class ClientHello {
             }
             hos.putBytes16(getEncodedCipherSuites());
             hos.putBytes8(compressionMethod);
+        }
+
+        public byte[] toByteArray() throws IOException {
+            byte[] hb = getHeaderBytes();
+            HandshakeOutStream hos = new HandshakeOutStream(null);
+            this.extensions.send(hos);
+            byte[] eb = hos.toByteArray();
+            byte[] answer = new byte[hb.length+ eb.length];
+            System.arraycopy(hb, 0, answer, 0, hb.length);
+            System.arraycopy(eb, 0, answer, hb.length, eb.length);
+            return answer;
         }
 
         @Override
@@ -627,6 +640,10 @@ final class ClientHello {
                     clientHelloVersion.id, sessionId, cipherSuites,
                     chc.sslContext.getSecureRandom());
 
+            ClientHelloMessage innerChm = new ClientHelloMessage(chc,
+                    clientHelloVersion.id, sessionId, cipherSuites,
+                    chc.sslContext.getSecureRandom());
+
             // cache the client random number for further using
             chc.clientHelloRandom = chm.clientRandom;
             chc.clientHelloVersion = clientHelloVersion.id;
@@ -634,7 +651,11 @@ final class ClientHello {
             // Produce extensions for ClientHello handshake message.
             SSLExtension[] extTypes = chc.sslConfig.getEnabledExtensions(
                     SSLHandshake.CLIENT_HELLO, chc.activeProtocols);
+SSLLogger.fine("Now produce extensions", chc);
             chm.extensions.produce(chc, extTypes);
+            innerChm.extensions.produce(chc, extTypes);
+            byte[] innerBytes = innerChm.toByteArray();
+SSLLogger.fine("Inner Client Hello: ", innerBytes);
 
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ClientHello handshake message", chm);

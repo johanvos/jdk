@@ -265,6 +265,7 @@ final class SSLExtensions {
             byte[] encoded = extension.produce(context, handshakeMessage);
             if (encoded != null) {
                 extMap.put(extension, encoded);
+SSLLogger.fine("[JV] processed extension " + extension+", added " + encoded.length+" bytes, first = " + (encoded.length > 0 ? encoded[0]: "NULL"));
                 encodedLength += encoded.length + 4; // extension_type (2)
                                                      // extension_data length(2)
             } else if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
