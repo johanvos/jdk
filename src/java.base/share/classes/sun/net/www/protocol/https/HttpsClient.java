@@ -37,6 +37,8 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.Principal;
 import java.security.cert.*;
 import java.util.ArrayList;
@@ -123,6 +125,7 @@ final class HttpsClient extends HttpClient
 
     private HostnameVerifier hv;
     private SSLSocketFactory sslSocketFactory;
+    private ECHConfig ec;
 
     // HttpClient.proxyDisabled will always be false, because we don't
     // use an application-level HTTP proxy.  We might tunnel through
@@ -583,7 +586,9 @@ final class HttpsClient extends HttpClient
                     needToCheckSpoofing = false;
                 }
             }
-
+            SSLParameters sslParameters = s.getSSLParameters();
+            byte[] ecb = Files.readAllBytes(Path.of("/tmp/ech.conf"));
+            sslParameters.setEchConfig(new ECHConfig(ecb));
             s.startHandshake();
             session = s.getSession();
             // change the serverSocket and serverOutput

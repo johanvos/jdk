@@ -39,7 +39,9 @@ import sun.security.util.HexDumpEncoder;
 final class SSLExtensions {
     private final HandshakeMessage handshakeMessage;
     private final Map<SSLExtension, byte[]> extMap = new LinkedHashMap<>();
+    private final Map<SSLExtension, byte[]> compressedMap = new LinkedHashMap<>();
     private int encodedLength;
+    private int compressedLength;
 
     // Extension map for debug logging
     private final Map<Integer, byte[]> logMap =
@@ -48,6 +50,7 @@ final class SSLExtensions {
     SSLExtensions(HandshakeMessage handshakeMessage) {
         this.handshakeMessage = handshakeMessage;
         this.encodedLength = 2;         // 2: the length of the extensions.
+        this.compressedLength = 2;
     }
 
     SSLExtensions(HandshakeMessage hm,
@@ -265,6 +268,12 @@ final class SSLExtensions {
             byte[] encoded = extension.produce(context, handshakeMessage);
             if (encoded != null) {
                 extMap.put(extension, encoded);
+                            ClientHandshakeContext chc = (ClientHandshakeContext)context;
+                context.setInnerEch(true);
+
+                byte[] cmpr = extension.produceCompressed(context, handshakeMessage);
+                compressedMap.put(extension, cmpr);
+                context.setInnerEch(false);
 SSLLogger.fine("[JV] processed extension " + extension+", added " + encoded.length+" bytes, first = " + (encoded.length > 0 ? encoded[0]: "NULL"));
                 encodedLength += encoded.length + 4; // extension_type (2)
                                                      // extension_data length(2)
@@ -276,6 +285,7 @@ SSLLogger.fine("[JV] processed extension " + extension+", added " + encoded.leng
             }
         }
     }
+    
 
     /**
      * Produce extension values for the specified extensions, replacing if
@@ -341,6 +351,49 @@ SSLLogger.fine("[JV] processed extension " + extension+", added " + encoded.leng
                 hos.putBytes16(extData);
             }
         }
+    }
+
+    void sendCompressed(HandshakeOutStream hos) throws IOException {
+        hos.putInt16(getCompressedLength());
+        int nentries = getCompressedEntries();
+        if (nentries > 0) {
+            int ef = 0xfd<<8;
+            hos.putInt16(ef);
+            hos.putInt16(nentries+1);
+            hos.putInt8(nentries);
+        }
+        // extensions must be sent in the order they appear in the enum
+        for (SSLExtension ext : SSLExtension.values()) {
+            byte[] extData = compressedMap.get(ext);
+            if (extData != null) {
+                hos.putInt16(ext.id);
+                if (!ext.isCompressible()) {
+                    hos.putBytes16(extData);
+                }
+            }
+        }
+    }
+
+    private int getCompressedEntries() {
+        int len = 0;
+        for (SSLExtension ext : SSLExtension.values()) {
+            if (compressedMap.containsKey(ext)) len++;
+        }
+        return len;
+    }
+
+    private int getCompressedLength() {
+        int len = 0;
+        for (SSLExtension ext : SSLExtension.values()) {
+            byte[] extData = compressedMap.get(ext);
+            if (extData != null) {
+                len = len + 2;
+                if (!ext.isCompressible()) {
+                    len = len + extData.length;
+                }
+            }
+        }
+        return len;
     }
 
     @Override

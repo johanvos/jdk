@@ -147,6 +147,8 @@ abstract class HandshakeContext implements ConnectionContext {
 
     // OCSP Stapling info
     boolean                                 staplingActive = false;
+    
+    boolean innerEch;
 
     protected HandshakeContext(SSLContextImpl sslContext,
             TransportContext conContext) throws IOException {
@@ -342,6 +344,14 @@ abstract class HandshakeContext implements ConnectionContext {
         }
 
         return Collections.unmodifiableList(suites);
+    }
+
+    void setInnerEch(boolean v) {
+        this.innerEch = v;
+    }
+ 
+    boolean isInnerEch() {
+        return innerEch;
     }
 
     /**

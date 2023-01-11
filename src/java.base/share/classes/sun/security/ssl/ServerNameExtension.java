@@ -228,7 +228,11 @@ final class ServerNameExtension {
                 serverNames =
                         chc.resumingSession.getRequestedServerNames();
             } else {
-                serverNames = chc.sslConfig.serverNames;
+                if (chc.isInnerEch()) {
+                    serverNames = List.of(new SNIHostName("cover.defo.ie"));
+                } else {
+                    serverNames = chc.sslConfig.serverNames;
+                }
             }   // Shall we use host too?
 
             // Empty server name list is not allowed in client mode.

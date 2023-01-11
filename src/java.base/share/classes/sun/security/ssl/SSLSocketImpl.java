@@ -120,6 +120,7 @@ public final class SSLSocketImpl
      */
     SSLSocketImpl(SSLContextImpl sslContext) {
         super();
+        Thread.dumpStack();
         this.sslContext = sslContext;
         HandshakeHash handshakeHash = new HandshakeHash();
         this.conContext = new TransportContext(sslContext, this,
@@ -134,6 +135,7 @@ public final class SSLSocketImpl
      */
     SSLSocketImpl(SSLContextImpl sslContext, SSLConfiguration sslConfig) {
         super();
+        Thread.dumpStack();
         this.sslContext = sslContext;
         HandshakeHash handshakeHash = new HandshakeHash();
         this.conContext = new TransportContext(sslContext, this, sslConfig,
@@ -151,6 +153,7 @@ public final class SSLSocketImpl
     SSLSocketImpl(SSLContextImpl sslContext, String peerHost,
             int peerPort) throws IOException {
         super();
+        Thread.dumpStack();
         this.sslContext = sslContext;
         HandshakeHash handshakeHash = new HandshakeHash();
         this.conContext = new TransportContext(sslContext, this,
@@ -174,6 +177,7 @@ public final class SSLSocketImpl
     SSLSocketImpl(SSLContextImpl sslContext,
             InetAddress address, int peerPort) throws IOException {
         super();
+        Thread.dumpStack();
         this.sslContext = sslContext;
         HandshakeHash handshakeHash = new HandshakeHash();
         this.conContext = new TransportContext(sslContext, this,
@@ -195,6 +199,7 @@ public final class SSLSocketImpl
             String peerHost, int peerPort, InetAddress localAddr,
             int localPort) throws IOException {
         super();
+        Thread.dumpStack();
         this.sslContext = sslContext;
         HandshakeHash handshakeHash = new HandshakeHash();
         this.conContext = new TransportContext(sslContext, this,
@@ -221,6 +226,7 @@ public final class SSLSocketImpl
             InetAddress peerAddr, int peerPort,
             InetAddress localAddr, int localPort) throws IOException {
         super();
+        Thread.dumpStack();
         this.sslContext = sslContext;
         HandshakeHash handshakeHash = new HandshakeHash();
         this.conContext = new TransportContext(sslContext, this,
@@ -241,6 +247,7 @@ public final class SSLSocketImpl
     SSLSocketImpl(SSLContextImpl sslContext, Socket sock,
             InputStream consumed, boolean autoClose) throws IOException {
         super(sock, consumed);
+        Thread.dumpStack();
         // We always layer over a connected socket
         if (!sock.isConnected()) {
             throw new SocketException("Underlying socket is not connected");
@@ -273,6 +280,7 @@ public final class SSLSocketImpl
     SSLSocketImpl(SSLContextImpl sslContext, Socket sock,
             String peerHost, int port, boolean autoClose) throws IOException {
         super(sock);
+        Thread.dumpStack();
         // We always layer over a connected socket
         if (!sock.isConnected()) {
             throw new SocketException("Underlying socket is not connected");
@@ -445,6 +453,7 @@ public final class SSLSocketImpl
             }
 
             try {
+                System.err.println("[JVDBGECH: " +this.getSSLParameters().getEchConfig()+" on "+this.getSSLParameters());
                 conContext.kickstart();
 
                 // All initial handshaking goes through this operation until we

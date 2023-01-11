@@ -32,6 +32,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.function.BiFunction;
 import javax.crypto.KeyGenerator;
+import javax.net.ssl.ECHConfig;
 import javax.net.ssl.HandshakeCompletedListener;
 import javax.net.ssl.SNIMatcher;
 import javax.net.ssl.SNIServerName;
@@ -59,6 +60,8 @@ final class SSLConfiguration implements Cloneable {
     boolean                     preferLocalCipherSuites;
     boolean                     enableRetransmissions;
     int                         maximumPacketSize;
+    
+    ECHConfig echConfig;
 
     // The configured signature schemes for "signature_algorithms" and
     // "signature_algorithms_cert" extensions
@@ -131,7 +134,7 @@ final class SSLConfiguration implements Cloneable {
     }
 
     SSLConfiguration(SSLContextImpl sslContext, boolean isClientMode) {
-
+        System.err.println("[JVDBG] sslconfig");
         // Configurations with SSLParameters, default values.
         this.userSpecifiedAlgorithmConstraints =
                 SSLAlgorithmConstraints.DEFAULT;
@@ -174,7 +177,8 @@ final class SSLConfiguration implements Cloneable {
 
     SSLParameters getSSLParameters() {
         SSLParameters params = new SSLParameters();
-
+        System.err.println("[JVDBG] getSSLParameters");
+        Thread.dumpStack();
         params.setAlgorithmConstraints(this.userSpecifiedAlgorithmConstraints);
         params.setProtocols(ProtocolVersion.toStringArray(enabledProtocols));
         params.setCipherSuites(CipherSuite.namesOf(enabledCipherSuites));
@@ -189,6 +193,9 @@ final class SSLConfiguration implements Cloneable {
                 params.setWantClientAuth(false);
         }
         params.setEndpointIdentificationAlgorithm(this.identificationProtocol);
+        if (this.echConfig != null) {
+            params.setEchConfig(this.echConfig);
+        }
 
         if (serverNames.isEmpty() && !noSniExtension) {
             // 'null' indicates none has been set

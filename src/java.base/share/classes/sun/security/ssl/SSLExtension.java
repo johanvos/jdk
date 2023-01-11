@@ -579,6 +579,11 @@ enum SSLExtension implements SSLStringizer {
 
         return null;
     }
+    static List<Integer> compressible = Arrays.asList(10,11);
+
+    static boolean isCompressible(int extensionType) {
+        return compressible.contains(extensionType);
+    }
 
     static String nameOf(int extensionType) {
         for (SSLExtension ext : SSLExtension.values()) {
@@ -601,7 +606,23 @@ enum SSLExtension implements SSLStringizer {
         return false;
     }
 
-    public byte[] produce(ConnectionContext context,
+    public boolean isCompressible() {
+        return false;
+    }
+
+    final public byte[] produceCompressed(ConnectionContext context,
+            HandshakeMessage message) throws IOException {
+        if (isCompressible(this.id)) {
+            byte[] answer = new byte[2];
+            answer[1] = (byte)(this.id % 256);
+            answer[0] = (byte)(this.id >> 8);
+            return answer;
+        } else {
+            return produce(context, message);
+        }
+    }
+
+    final public byte[] produce(ConnectionContext context,
             HandshakeMessage message) throws IOException {
         if (networkProducer != null) {
             return networkProducer.produce(context, message);

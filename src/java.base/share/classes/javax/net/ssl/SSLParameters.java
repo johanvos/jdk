@@ -86,6 +86,7 @@ public class SSLParameters {
     private String[] applicationProtocols = new String[0];
     private String[] signatureSchemes = null;
     private String[] namedGroups = null;
+    private ECHConfig echConfig;
 
     /**
      * Constructs SSLParameters.
@@ -330,6 +331,8 @@ public class SSLParameters {
      * @since 1.8
      */
     public final void setServerNames(List<SNIServerName> serverNames) {
+        System.err.println("[JVDBG] setServernames");
+        Thread.dumpStack();
         if (this.sniNames == serverNames) {
             return;
         }
@@ -936,5 +939,23 @@ public class SSLParameters {
         }
 
         this.namedGroups = tempGroups;
+    }
+    
+    /**
+     * get echconfig
+     * @return te conf
+     */
+    public ECHConfig getEchConfig() {
+        return this.echConfig;
+    }
+    
+    /**
+     * set config
+     * @param v ech config
+     */
+    public void setEchConfig(ECHConfig v) {
+        this.echConfig = v;
+        System.err.println("PUBLICNAME == " + v.getPublicName()+" set on "+this);
+        Thread.dumpStack();
     }
 }

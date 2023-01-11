@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,15 +51,6 @@ final class EchExtension {
                         new SSLProtocolException(
                     "Invalid server_name extension: insufficient data"));
             }
-/*
-            int sniLen = Record.getInt16(buffer);
-            if ((sniLen == 0) || sniLen != buffer.remaining()) {
-                throw hc.conContext.fatal(Alert.DECODE_ERROR,
-                        new SSLProtocolException(
-                    "Invalid server_name extension: incomplete data"));
-            }
-*/
-
         }
 
         @Override
@@ -71,13 +63,7 @@ final class EchExtension {
     private static final class CHEchStringizer implements SSLStringizer {
         @Override
         public String toString(HandshakeContext hc, ByteBuffer buffer) {
-            try {
-Thread.dumpStack();
-                return (new CHEchsSpec(hc, buffer)).toString();
-            } catch (IOException ioe) {
-                // For debug logging only, so please swallow exceptions.
-                return ioe.getMessage();
-            }
+            return "ECH Extension, buffer = " + Arrays.toString(buffer.array());
         }
     }
 

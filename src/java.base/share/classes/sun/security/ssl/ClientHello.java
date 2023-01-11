@@ -27,6 +27,8 @@ package sun.security.ssl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.text.MessageFormat;
@@ -43,6 +45,10 @@ import sun.security.ssl.SupportedVersionsExtension.CHSupportedVersionsSpec;
  * Pack of the ClientHello handshake message.
  */
 final class ClientHello {
+        static final int OSSL_ECH_PADDING_TARGET = 256;
+    static final int OSSL_ECH_PADDING_INCREMENT = 32;
+    static final String OSSL_ECH_CONTEXT_STRING = "tls ech";
+    
     static final SSLProducer kickstartProducer =
         new ClientHelloKickstartProducer();
     static final SSLConsumer handshakeConsumer =
@@ -308,9 +314,7 @@ final class ClientHello {
 
         @Override
         public void send(HandshakeOutStream hos) throws IOException {
-Thread.dumpStack();
             sendCore(hos);
-hos.putInt8((byte)0xAB);
             extensions.send(hos);       // In TLS 1.3, use of certain
                                         // extensions is mandatory.
         }
@@ -336,6 +340,17 @@ hos.putInt8((byte)0xAB);
             System.arraycopy(hb, 0, answer, 0, hb.length);
             System.arraycopy(eb, 0, answer, hb.length, eb.length);
             return answer;
+        }
+
+        public byte[] getEncodedByteArray() throws IOException {
+            HandshakeOutStream hos = new HandshakeOutStream(null);
+            hos.putInt8((byte) ((clientVersion >>> 8) & 0xFF));
+            hos.putInt8((byte) (clientVersion & 0xFF));
+            hos.write(clientRandom.randomBytes, 0, 32);
+            hos.putBytes16(getEncodedCipherSuites());
+            hos.putBytes8(compressionMethod);
+            this.extensions.sendCompressed(hos);
+            return hos.toByteArray();
         }
 
         @Override
@@ -400,6 +415,8 @@ hos.putInt8((byte)0xAB);
      */
     private static final
             class ClientHelloKickstartProducer implements SSLProducer {
+        
+        private ECHConfig echConfig;
         // Prevent instantiation of this class.
         private ClientHelloKickstartProducer() {
             // blank
@@ -409,6 +426,8 @@ hos.putInt8((byte)0xAB);
         @Override
         public byte[] produce(ConnectionContext context) throws IOException {
             // The producing happens in client side only.
+            byte[] echConfigBytes = Files.readAllBytes(Path.of("/tmp/ech.conf"));
+            this.echConfig = new ECHConfig(echConfigBytes);
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
 
             // clean up this producer
@@ -655,8 +674,40 @@ SSLLogger.fine("Now produce extensions", chc);
             chm.extensions.produce(chc, extTypes);
             innerChm.extensions.produce(chc, extTypes);
             byte[] innerBytes = innerChm.toByteArray();
-SSLLogger.fine("Inner Client Hello: ", innerBytes);
+            int cl = innerBytes.length;
+            byte[] innerCh = new byte[cl+4];
+            System.arraycopy(innerBytes, 0, innerCh, 4, cl);
+            innerCh[0] = 0x1;
+            int clw = cl;
+            innerCh[3] = (byte)(clw %256);
+            clw = clw/256;
+            innerCh[2] = (byte)(clw % 256);
+            innerCh[1] = (byte)(clw / 256);
+SSLLogger.info("inner CH ("+(cl+4)+"): ", innerCh);
+byte[] crb = innerChm.clientRandom.randomBytes;
+SSLLogger.info("inner, client_random ("+crb.length+")", crb);
+byte[] isid = innerChm.sessionId.getId();
+SSLLogger.info("iNner, session_id ("+isid.length+")", isid);
+byte[] clear = innerChm.getEncodedByteArray();
+SSLLogger.info("encoded inner CH ", clear);
 
+SSLLogger.info("selected version: "+echConfig.getVersion()+", configid = "+echConfig.getConfigId());
+SSLLogger.info("peer pub: ", echConfig.getPublicKey());
+
+        int innersnipadding = 0;
+        int lengthWithSniPadding = innersnipadding + clear.length;
+        int lengthOfPadding = 31 - ((lengthWithSniPadding - 1) % 32);
+        int lengthWithPadding = clear.length + lengthOfPadding + innersnipadding;
+        while (lengthWithPadding < OSSL_ECH_PADDING_TARGET) {
+            lengthWithPadding += OSSL_ECH_PADDING_INCREMENT;
+        }
+        int clearLen = lengthWithPadding;
+SSLLogger.info("EAAE: padding: mnl " + echConfig.getMaxNameLength() + ", lws: " + lengthWithSniPadding
+                + ",lop: " + lengthOfPadding + ", lwp: " + lengthWithPadding
+                + ", clear_len: " + clearLen + ", orig: " + clear.length);
+SSLLogger.info("Raw ECHConfig: ", echConfig.getRaw());
+byte[] info = makeInfo();
+SSLLogger.info("info", info);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ClientHello handshake message", chm);
             }
@@ -681,6 +732,15 @@ SSLLogger.fine("Inner Client Hello: ", innerBytes);
 
             // The handshake message has been delivered.
             return null;
+        }
+
+        private byte[] makeInfo() {
+            byte[] oecb = OSSL_ECH_CONTEXT_STRING.getBytes();
+            byte[] info = new byte[oecb.length + 1 + echConfig.getRaw().length];
+            System.arraycopy(oecb, 0, info, 0, oecb.length);
+            info[oecb.length] = 0;
+            System.arraycopy(echConfig.getRaw(), 0, info, oecb.length + 1, echConfig.getRaw().length);
+            return info;
         }
     }
 

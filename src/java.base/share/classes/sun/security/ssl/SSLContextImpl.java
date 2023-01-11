@@ -76,6 +76,7 @@ public abstract class SSLContextImpl extends SSLContextSpi {
 
 
     SSLContextImpl() {
+        Thread.dumpStack();
         ephemeralKeyManager = new EphemeralKeyManager();
         clientCache = new SSLSessionContextImpl(false);
         serverCache = new SSLSessionContextImpl(true);
