@@ -30,6 +30,7 @@ import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLHandshakeException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.AlgorithmParameterSpec;
@@ -48,6 +49,8 @@ public class KAKeyDerivation implements SSLKeyDerivation {
             HandshakeContext context,
             PrivateKey localPrivateKey,
             PublicKey peerPublicKey) {
+        System.err.println("CCCCCCreate a keyDerivation for alg = " + algorithmName+" and sk = " + localPrivateKey+" and pk = " + peerPublicKey+" of class "+peerPublicKey.getClass());
+     Thread.dumpStack();
         this.algorithmName = algorithmName;
         this.context = context;
         this.localPrivateKey = localPrivateKey;
@@ -70,6 +73,8 @@ public class KAKeyDerivation implements SSLKeyDerivation {
     private SecretKey t12DeriveKey(String algorithm,
             AlgorithmParameterSpec params) throws IOException {
         try {
+System.err.println("LLLLLLL");
+Thread.dumpStack();
             KeyAgreement ka = KeyAgreement.getInstance(algorithmName);
             ka.init(localPrivateKey);
             ka.doPhase(peerPublicKey, true);
@@ -98,6 +103,8 @@ public class KAKeyDerivation implements SSLKeyDerivation {
     private SecretKey t13DeriveKey(String algorithm,
             AlgorithmParameterSpec params) throws IOException {
         try {
+System.err.println("LLLLLLL");
+Thread.dumpStack();
             KeyAgreement ka = KeyAgreement.getInstance(algorithmName);
             ka.init(localPrivateKey);
             ka.doPhase(peerPublicKey, true);

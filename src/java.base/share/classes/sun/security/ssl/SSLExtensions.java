@@ -241,6 +241,10 @@ final class SSLExtensions {
         }
     }
 
+    void updateExtension(SSLExtension extension, byte[] val) {
+        SSLLogger.info("Asked to update extension "+extension+" to this value: ", val);
+        extMap.put(extension, val);
+    }
     /**
      * Produce extension values for the specified extensions.
      */

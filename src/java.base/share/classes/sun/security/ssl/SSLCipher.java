@@ -1764,6 +1764,7 @@ enum SSLCipher {
                 }
 
                 try {
+                    Thread.dumpStack();
                     len = cipher.doFinal(dup, bb);
                 } catch (IllegalBlockSizeException |
                             BadPaddingException | ShortBufferException ibse) {
@@ -1905,6 +1906,7 @@ enum SSLCipher {
                 }
 
                 try {
+                    Thread.dumpStack();
                     len = cipher.doFinal(bb, pt);
                 } catch (IllegalBlockSizeException ibse) {
                     // unlikely to happen
@@ -2042,6 +2044,7 @@ enum SSLCipher {
                 }
 
                 try {
+                    Thread.dumpStack();
                     len = cipher.doFinal(dup, bb);
                 } catch (IllegalBlockSizeException |
                             BadPaddingException | ShortBufferException ibse) {
@@ -2166,6 +2169,7 @@ enum SSLCipher {
                 }
 
                 try {
+                    Thread.dumpStack();
                     len = cipher.doFinal(bb, pt);
                 } catch (IllegalBlockSizeException ibse) {
                     // unlikely to happen
@@ -2291,6 +2295,7 @@ enum SSLCipher {
 
                 int len;
                 try {
+                    Thread.dumpStack();
                     len = cipher.doFinal(dup, bb);
                 } catch (IllegalBlockSizeException |
                             BadPaddingException | ShortBufferException ibse) {
@@ -2423,6 +2428,7 @@ enum SSLCipher {
                 }
 
                 try {
+                    Thread.dumpStack();
                     len = cipher.doFinal(bb, pt);
                 } catch (IllegalBlockSizeException ibse) {
                     // unlikely to happen
@@ -2559,6 +2565,7 @@ enum SSLCipher {
 
                 int len;
                 try {
+                    Thread.dumpStack();
                     len = cipher.doFinal(dup, bb);
                 } catch (IllegalBlockSizeException |
                             BadPaddingException | ShortBufferException ibse) {

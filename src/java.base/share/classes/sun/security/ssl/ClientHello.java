@@ -25,19 +25,41 @@
 
 package sun.security.ssl;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.XECPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.NamedParameterSpec;
+import java.security.spec.XECPublicKeySpec;
 import java.text.MessageFormat;
 import java.util.*;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyAgreement;
+import javax.crypto.Mac;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLProtocolException;
 import static sun.security.ssl.ClientAuthType.CLIENT_AUTH_REQUIRED;
+import static sun.security.ssl.NamedGroup.X25519;
 import sun.security.ssl.SSLHandshake.HandshakeMessage;
 import sun.security.ssl.SupportedVersionsExtension.CHSupportedVersionsSpec;
 
@@ -408,6 +430,7 @@ final class ClientHello {
             }
             return messageFormat.format(messageFields);
         }
+
     }
 
     /**
@@ -417,6 +440,7 @@ final class ClientHello {
             class ClientHelloKickstartProducer implements SSLProducer {
         
         private ECHConfig echConfig;
+        private PublicKey ephemeralPub;
         // Prevent instantiation of this class.
         private ClientHelloKickstartProducer() {
             // blank
@@ -672,6 +696,8 @@ final class ClientHello {
                     SSLHandshake.CLIENT_HELLO, chc.activeProtocols);
 SSLLogger.fine("Now produce extensions", chc);
             chm.extensions.produce(chc, extTypes);
+            for (SSLExtension ext: extTypes) {
+            }
             innerChm.extensions.produce(chc, extTypes);
             byte[] innerBytes = innerChm.toByteArray();
             int cl = innerBytes.length;
@@ -687,9 +713,13 @@ SSLLogger.info("inner CH ("+(cl+4)+"): ", innerCh);
 byte[] crb = innerChm.clientRandom.randomBytes;
 SSLLogger.info("inner, client_random ("+crb.length+")", crb);
 byte[] isid = innerChm.sessionId.getId();
-SSLLogger.info("iNner, session_id ("+isid.length+")", isid);
+SSLLogger.info("inner, session_id ("+isid.length+")", isid);
 byte[] clear = innerChm.getEncodedByteArray();
 SSLLogger.info("encoded inner CH ", clear);
+
+SSLLogger.info("outer, client_random ("+crb.length+")", chm.clientRandom.randomBytes);
+SSLLogger.info("outer, session_id", chm.sessionId.getId());
+
 
 SSLLogger.info("selected version: "+echConfig.getVersion()+", configid = "+echConfig.getConfigId());
 SSLLogger.info("peer pub: ", echConfig.getPublicKey());
@@ -701,17 +731,34 @@ SSLLogger.info("peer pub: ", echConfig.getPublicKey());
         while (lengthWithPadding < OSSL_ECH_PADDING_TARGET) {
             lengthWithPadding += OSSL_ECH_PADDING_INCREMENT;
         }
-        int clearLen = lengthWithPadding;
-SSLLogger.info("EAAE: padding: mnl " + echConfig.getMaxNameLength() + ", lws: " + lengthWithSniPadding
-                + ",lop: " + lengthOfPadding + ", lwp: " + lengthWithPadding
-                + ", clear_len: " + clearLen + ", orig: " + clear.length);
-SSLLogger.info("Raw ECHConfig: ", echConfig.getRaw());
-byte[] info = makeInfo();
-SSLLogger.info("info", info);
+            int clearLen = lengthWithPadding;
+            SSLLogger.info("EAAE: padding: mnl " + echConfig.getMaxNameLength() + ", lws: " + lengthWithSniPadding
+                    + ",lop: " + lengthOfPadding + ", lwp: " + lengthWithPadding
+                    + ", clear_len: " + clearLen + ", orig: " + clear.length);
+            SSLLogger.info("Raw ECHConfig: ", echConfig.getRaw());
+            byte[] info = makeInfo();
+            SSLLogger.info("info", info);
+            PublicKey peerPub = convertPeerPublicKey(echConfig.getPublicKey());
+            byte[] sharedKey = encapsulateKey(chc, peerPub);
+            System.err.println("sk = "+sharedKey);
+            SSLLogger.info("SharedKey", sharedKey);
+            
+            byte[] pkt = chm.toByteArray();
+            SSLLogger.info("pkt0", pkt);
+            int cipherlen = clearLen + 16; // not valid for all AEAD
+            int oldlen = pkt.length;
+            pkt = expandOuterCH(pkt, this.ephemeralPub.getEncoded(), cipherlen);
+            int cipherStart = pkt.length - cipherlen;
+            SSLLogger.info("pkt", pkt);
+            byte[] aad = new byte[pkt.length - 4];
+            System.arraycopy(pkt,0, aad,0, aad.length);
+            byte[] cipher = encrypt(sharedKey, aad, clear);
+            byte[] newCH = new byte[pkt.length - oldlen];
+            System.arraycopy(cipher, 0, pkt, cipherStart, cipher.length);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ClientHello handshake message", chm);
             }
-
+            chm.extensions.updateExtension(SSLExtension.CH_ECH, newCH);
             // Output the handshake message.
             chm.write(chc.handshakeOutput);
             chc.handshakeOutput.flush();
@@ -741,6 +788,112 @@ SSLLogger.info("info", info);
             info[oecb.length] = 0;
             System.arraycopy(echConfig.getRaw(), 0, info, oecb.length + 1, echConfig.getRaw().length);
             return info;
+        }
+    
+        private PublicKey convertPeerPublicKey(byte[] uBytes) throws IOException {
+            try {
+                NamedGroup ng = NamedGroup.X25519;
+                Utilities.reverseBytes(uBytes);
+                BigInteger u = new BigInteger(1, uBytes);
+                XECPublicKeySpec xecPublicKeySpec = new XECPublicKeySpec(
+                        new NamedParameterSpec(ng.name), u);
+                KeyFactory factory = KeyFactory.getInstance(ng.algorithm);
+                XECPublicKey publicKey = (XECPublicKey) factory.generatePublic(
+                        xecPublicKeySpec);
+                return publicKey;
+            } catch (Exception e) {
+                throw new IOException(e);
+
+            }
+
+        }
+
+        private byte[] encapsulateKey(ClientHandshakeContext chc, PublicKey peerPub) throws IOException {
+            try {
+                NamedGroup ng = NamedGroup.X25519;
+                SSLKeyExchange ke = SSLKeyExchange.valueOf(ng);
+                System.err.println("KeyExchange class = "+ke.getClass());
+                SSLPossession[] sslpos = ke.createPossessions(chc);
+                System.err.println("sslpos length = "+sslpos.length);
+                SSLLogger.info("SSLPOSSS", sslpos[0]);
+                NamedGroupPossession ngp = (NamedGroupPossession)sslpos[0];
+                SSLLogger.info("public bytes = ", ngp.encode());
+                SSLLogger.info("pubkey = ", ngp.getPublicKey());
+                this.ephemeralPub = ngp.getPublicKey();
+                System.err.println("PKclass = "+ngp.getPublicKey().getClass());
+                SSLLogger.info("private key = ", ngp.getPrivateKey());
+                KAKeyDerivation kd = new KAKeyDerivation(ng.algorithm,chc, ngp.getPrivateKey(),peerPub);
+                SSLLogger.info("KEYderivation = ", kd);
+                System.err.println("1");
+                KeyAgreement ka = KeyAgreement.getInstance(ng.algorithm);
+                System.err.println("2");
+                ka.init(ngp.getPrivateKey());
+                System.err.println("3");
+                Key sharedKey = ka.doPhase(peerPub, true);
+                System.err.println("4");
+                byte[] dh = ka.generateSecret();
+                System.err.println("sharedkey = "+sharedKey);
+                byte[] kemContext = new byte[64];
+                System.arraycopy(this.ephemeralPub.getEncoded(), 0, kemContext, 0, 32);
+                System.arraycopy(peerPub.getEncoded(), 0, kemContext, 32, 32);
+                byte[] answer = extractAndExpand(dh, kemContext);
+                return answer;
+            } catch (InvalidKeyException | NoSuchAlgorithmException ex) {
+                ex.printStackTrace();
+throw new IOException (ex);
+            }
+        }
+        
+        private byte[] expandOuterCH(byte[] src, byte[] mypub, int cipherlen) {
+            System.err.println("expand, src size = " + src.length);
+            byte KDF_HI = 0x0; //should come from EchConfig
+            byte KDF_LO = 0x1;
+            byte AEAD_HI = 0x0;
+            byte AEAD_LO = 0x1;
+            int ol = src.length-3; // remove encrypted_client_hello length + 00
+            int will_add = 43;
+            int ef0dlength=1 + 4 + 1 + 2 + mypub.length+2+cipherlen;
+            byte[] answer = new byte[ol+will_add+cipherlen];
+            System.arraycopy(src, 0, answer, 0, ol);
+            answer[ol] = (byte)(ef0dlength/256);
+            answer[ol+1] = (byte) (ef0dlength%256);
+            answer[ol+2] = 0x0; // ECHClientHelloType.outer
+            answer[ol + 3] = KDF_HI;
+            answer[ol + 4] = KDF_LO;
+            answer[ol + 5] = AEAD_HI;
+            answer[ol + 6] = AEAD_LO;
+            answer[ol+7] = 0x0; // config id
+            answer[ol+8] = 0x0; // config id
+            answer[ol+9] = 0x20; // length mypub
+            System.arraycopy(mypub, 0, answer, ol+9, 32);
+            answer[ol+40] = (byte)(cipherlen/256);
+            answer[ol+41] = (byte)(cipherlen%256);
+            for (int i = 0; i < cipherlen; i++) {
+                answer[ol+will_add+i] = 0x0;
+            }
+            return answer;
+        }
+       
+        byte[] encrypt(byte[] key, byte[] aad, byte[] clear) {
+            try {
+                // we assume aeadId = 0x0001 which is AES-GCM-128
+                final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        GCMParameterSpec parameterSpec = new GCMParameterSpec(128, new byte[0]); //128 bit auth tag length
+        SecretKey secretKey = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
+                System.err.println("Got cipher: " + cipher);
+                byte[] fin = cipher.doFinal(clear);
+                byte[] answer = new byte[clear.length + 16];
+                System.arraycopy(fin, 0, answer, 0, fin.length);
+                return answer;
+            } catch (NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException ex) {
+                ex.printStackTrace();
+            } catch (InvalidKeyException ex) {
+                ex.printStackTrace();
+            } catch (InvalidAlgorithmParameterException ex) {
+                ex.printStackTrace();
+            }
+            return null;
         }
     }
 
@@ -1544,5 +1697,86 @@ SSLLogger.info("info", info);
                 HandshakeMessage message) throws IOException {
             throw new UnsupportedOperationException("Not supported yet.");
         }
+    }
+    
+    static byte[] extractAndExpand(byte[] dh, byte[] kemctx) {
+        String suiteId = "";
+        int Nsecret = 32;
+        byte[] eae_prk = labeledExtract("".getBytes(), "eae_prk".getBytes(), suiteId.getBytes(), dh);
+        byte[] shared_secret = labeledExpand(eae_prk, "shared_secret".getBytes(),
+                kemctx, suiteId, Nsecret);
+        return shared_secret;
+    }
+
+    static byte[] labeledExtract(byte[] salt, byte[] label, byte[] suite_id, byte[] ikm) {
+        byte[] labeled_ikm = concat("HPKE-v1".getBytes(), concat(suite_id, concat(label, ikm)));
+        return extract(salt, labeled_ikm);
+    }
+
+    static byte[] labeledExpand(byte[] prk, byte[] label, byte[] info, String suite_id, int l) {
+        String i2o = "00:32";
+        byte[] labeled_info = concat(i2o.getBytes(), concat("HPKE-v1".getBytes(), concat(suite_id.getBytes(), concat(label, info))));
+        return expand(prk, labeled_info, l);
+    }
+
+    static private byte[] extract(byte[] salt, byte[] inputKeyMaterial) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            if ((salt == null) || (salt.length == 0)) {
+                salt = new byte[inputKeyMaterial.length];
+                for (int i = 0; i < salt.length;i++) salt[i] = (byte)0;
+            }
+            mac.init(new SecretKeySpec(salt, "HmacSHA256"));
+            return mac.doFinal(inputKeyMaterial);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    static final int HASH_OUTPUT_SIZE=32;
+
+    static private byte[] expand(byte[] prk, byte[] info, int outputSize) {
+        try {
+            int iterations = (int) Math.ceil((double) outputSize / (double) HASH_OUTPUT_SIZE);
+            byte[] mixin = new byte[0];
+            ByteArrayOutputStream results = new ByteArrayOutputStream();
+            int remainingBytes = outputSize;
+
+            for (int i = getIterationStartOffset(); i < iterations + getIterationStartOffset(); i++) {
+                Mac mac = Mac.getInstance("HmacSHA256");
+                mac.init(new SecretKeySpec(prk, "HmacSHA256"));
+
+                mac.update(mixin);
+                if (info != null) {
+                    mac.update(info);
+                }
+                mac.update((byte) i);
+
+                byte[] stepResult = mac.doFinal();
+                int stepSize = Math.min(remainingBytes, stepResult.length);
+
+                results.write(stepResult, 0, stepSize);
+
+                mixin = stepResult;
+                remainingBytes -= stepSize;
+            }
+
+            return results.toByteArray();
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    static protected int getIterationStartOffset() {
+        return 1;
+    }
+
+    static byte[] concat(byte[] a, byte[] b) {
+        int al = a.length; 
+        int bl = b.length;
+        byte[] c = new byte[al + bl];
+        System.arraycopy(c, 0, a, 0, al);
+        System.arraycopy(c, al, b, 0, bl);
+        return c;        
     }
 }

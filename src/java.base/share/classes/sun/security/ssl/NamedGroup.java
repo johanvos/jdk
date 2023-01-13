@@ -286,6 +286,8 @@ enum NamedGroup {
                     algParams = null;
                     try {
                         KeyAgreement.getInstance(name);
+System.err.println("IIIIIII");
+Thread.dumpStack();
 
                         // The following service is also needed.  But for
                         // performance, check the KeyAgreement impl only.

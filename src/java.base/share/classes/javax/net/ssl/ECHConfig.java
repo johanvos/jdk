@@ -20,6 +20,7 @@ public class ECHConfig {
     int kemId;
     byte[] publicKey;
     int[] cipher;
+    HpkeSuite[] cipherSuite;
     String publicName;
     int maxNameLength;
 
@@ -137,9 +138,13 @@ public class ECHConfig {
         System.err.println("CL = "+cl+", ptr = "+ptr);
         int suiteCount = cl/CIPHER_LENGTH;
         cipher = new int[suiteCount];
+        cipherSuite = new HpkeSuite[suiteCount];
         for (int i = 0; i < suiteCount; i++) {
-            cipher[i] = readBytes(binbuf, ptr, 4);
-            System.err.println("Cipher = " + Integer.toHexString(cipher[i]));
+            int val = readBytes(binbuf, ptr, 4);
+            cipher[i] = val;
+            System.err.println("Cipher = " + Integer.toHexString(val));
+            HpkeSuite hs = new HpkeSuite(val/(1<<16), val%(1<<16) );
+            cipherSuite[i] = hs;
             ptr += 4;
         }
         this.maxNameLength = readBytes(binbuf, ptr, 1);
@@ -169,6 +174,16 @@ public class ECHConfig {
                 + "\nconfig_id = "+configId+" ("+Integer.toHexString(configId)+")"
                 + "\npubname = "+this.publicName
                 + "\npubkey = " + Arrays.toString(publicKey);
+    }
+    
+    class HpkeSuite {
+        int kdfId, aeadId;
+        
+        HpkeSuite(int k, int a) {
+            System.err.println("Created Hpkesuite, kdfId = "+k+", aeaedid = "+a);
+            this.kdfId = k;
+            this.aeadId = a;
+        }
     }
 //    unsigned int public_name_len;
 //    unsigned char *public_name;

@@ -78,6 +78,7 @@ final class XDHKeyExchange {
             }
 
             byte[] uBytes = encodedPoint.clone();
+            SSLLogger.info("UBytes", uBytes);
             Utilities.reverseBytes(uBytes);
             BigInteger u = new BigInteger(1, uBytes);
 
@@ -115,7 +116,8 @@ final class XDHKeyExchange {
 
         @Override
         public byte[] encode() {
-
+            System.err.println("JJJJJJJ");
+Thread.dumpStack();
             byte[] uBytes = ECUtil.trimZeroes(publicKey.getU().toByteArray());
 
             int expLength;

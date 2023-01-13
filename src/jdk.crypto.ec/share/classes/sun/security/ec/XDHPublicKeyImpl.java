@@ -47,6 +47,7 @@ public final class XDHPublicKeyImpl extends X509Key implements XECPublicKey {
 
     XDHPublicKeyImpl(XECParameters params, BigInteger u)
         throws InvalidKeyException {
+Thread.dumpStack();
 
         this.paramSpec = new NamedParameterSpec(params.getName());
         this.algid = new AlgorithmId(params.getOid());
@@ -63,6 +64,7 @@ public final class XDHPublicKeyImpl extends X509Key implements XECPublicKey {
     }
 
     XDHPublicKeyImpl(byte[] encoded) throws InvalidKeyException {
+Thread.dumpStack();
         decode(encoded);
 
         XECParameters params =
