@@ -753,8 +753,9 @@ SSLLogger.info("peer pub: ", echConfig.getPublicKey());
             byte[] aad = new byte[pkt.length - 4];
             System.arraycopy(pkt,0, aad,0, aad.length);
             byte[] cipher = encrypt(sharedKey, aad, clear);
-            byte[] newCH = new byte[pkt.length - oldlen];
-            System.arraycopy(cipher, 0, pkt, cipherStart, cipher.length);
+            byte[] newCH = new byte[pkt.length - oldlen+1];
+            System.arraycopy(pkt, oldlen-1, newCH, 0, newCH.length);
+          //  System.arraycopy(cipher, 0, pkt, cipherStart, cipher.length);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ClientHello handshake message", chm);
             }
