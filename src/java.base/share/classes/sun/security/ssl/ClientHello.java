@@ -31,6 +31,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -42,6 +43,8 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.XECPrivateKey;
 import java.security.interfaces.XECPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
@@ -1803,39 +1806,54 @@ throw new IOException (ex);
     static final byte[] SUITEID = new byte[]{0x4b, 0x45, 0x4d, 0x0, 0x20}; //KEM0x0020
     
     static void deriveKeyPair(byte[] ikm) {
-        try {
-            HKDF hkdf = new HKDF("SHA256");
-            SecretKeySpec salt = null;
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            baos.writeBytes("HPKE-v1".getBytes());
-            baos.writeBytes(SUITEID);
-            baos.writeBytes("dkp_prk".getBytes());
-            baos.writeBytes(ikm);
-            byte[] fullikm = baos.toByteArray();
-            SecretKeySpec inputKey = new SecretKeySpec(fullikm, "HKDF-IMK");
-            SecretKey extract = hkdf.extract(salt, inputKey, "dpk_prk");
-            
-            byte[] encoded = extract.getEncoded();
-            SSLLogger.info("intermediate key", encoded);
-            
-            ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
-            baos2.writeBytes(new byte[]{0x0, 0x20});
-            baos2.writeBytes("HPKE-v1".getBytes());
-            baos2.writeBytes(SUITEID);
-            baos2.writeBytes("sk".getBytes());
-            byte[] ikm2 = baos2.toByteArray();
-            SecretKey expand = hkdf.expand(extract, ikm2, 32, "HKDF");
-SSLLogger.info("ikm2 = ", ikm2);
-            byte[] eencoded = expand.getEncoded();
-            SSLLogger.info("new key", eencoded);
-            
-            
-            byte[] dkp_prk = labeledExtract("".getBytes(), "".getBytes(), "dkp_prk".getBytes(), ikm);
-            byte[] sk = labeledExpand(dkp_prk, "sk".getBytes(), "".getBytes(), "", 32);
-            SSLLogger.info("deriveKeyPair results in ", sk);
-        } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
-            ex.printStackTrace();
-        }
+//        try {
+            SomeWork.deriveKeyPair(ikm);
+//            HKDF hkdf = new HKDF("SHA256");
+//            SecretKeySpec salt = null;
+//            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//            baos.writeBytes("HPKE-v1".getBytes());
+//            baos.writeBytes(SUITEID);
+//            baos.writeBytes("dkp_prk".getBytes());
+//            baos.writeBytes(ikm);
+//            byte[] fullikm = baos.toByteArray();
+//            SecretKeySpec inputKey = new SecretKeySpec(fullikm, "HKDF-IMK");
+//            SecretKey extract = hkdf.extract(salt, inputKey, "dpk_prk");
+//            
+//            byte[] encoded = extract.getEncoded();
+//            SSLLogger.info("intermediate key", encoded);
+//            
+//            ByteArrayOutputStream baos2 = new ByteArrayOutputStream();
+//            baos2.writeBytes(new byte[]{0x0, 0x20});
+//            baos2.writeBytes("HPKE-v1".getBytes());
+//            baos2.writeBytes(SUITEID);
+//            baos2.writeBytes("sk".getBytes());
+//            byte[] ikm2 = baos2.toByteArray();
+//            SecretKey expand = hkdf.expand(extract, ikm2, 32, "HKDF");
+//SSLLogger.info("ikm2 = ", ikm2);
+//            byte[] eencoded = expand.getEncoded();
+//            SSLLogger.info("new key", eencoded);
+//            
+//                    NamedParameterSpec paramSpec = new NamedParameterSpec("X25519");
+//        KeyFactory kf = KeyFactory.getInstance("XDH");
+//        KeySpec privateSpec = new XECPrivateKeySpec(paramSpec,eencoded);
+//        PrivateKey privateKey = kf.generatePrivate(privateSpec);
+//            
+//
+//            PublicKey mypubkey = generatePublicKeyFromPrivate((XECPrivateKey)privateKey);
+//            
+////            
+////            NamedGroup ng = NamedGroup.X25519;
+////
+////            KeyPairGenerator kpg = KeyPairGenerator.getInstance(ng.algorithm);
+////            kpg.initialize(ng.keAlgParamSpec, random);
+////            kpg.generateKeyPair();
+////            
+////            byte[] dkp_prk = labeledExtract("".getBytes(), "".getBytes(), "dkp_prk".getBytes(), ikm);
+////            byte[] sk = labeledExpand(dkp_prk, "sk".getBytes(), "".getBytes(), "", 32);
+//            SSLLogger.info("deriveKeyPair results in ", mypubkey);
+//        } catch (Exception ex) {
+//            ex.printStackTrace();
+//        }
     }
 
     static protected int getIterationStartOffset() {
@@ -1849,5 +1867,27 @@ SSLLogger.info("ikm2 = ", ikm2);
         System.arraycopy(c, 0, a, 0, al);
         System.arraycopy(c, al, b, 0, bl);
         return c;        
+    }
+    
+    public static  PublicKey generatePublicKeyFromPrivate(XECPrivateKey privateKey) throws GeneralSecurityException {
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(X25519.name);
+        keyPairGenerator.initialize(new NamedParameterSpec(X25519.name), new StaticSecureRandom(privateKey.getScalar().get()));
+        return keyPairGenerator.generateKeyPair().getPublic();
+    }
+        
+    public static class StaticSecureRandom extends SecureRandom {
+ private static final long serialVersionUID = 1234567L;
+
+        private final byte[] privateKey;
+
+        public StaticSecureRandom(byte[] privateKey) {
+            this.privateKey = privateKey.clone();
+        }
+
+        @Override
+        public void nextBytes(byte[] bytes) {
+            System.arraycopy(privateKey, 0, bytes, 0, privateKey.length);
+        }
+
     }
 }
