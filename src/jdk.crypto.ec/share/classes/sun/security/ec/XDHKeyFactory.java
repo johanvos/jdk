@@ -168,14 +168,18 @@ public class XDHKeyFactory extends KeyFactorySpi {
 
     private PrivateKey generatePrivateImpl(KeySpec keySpec)
         throws InvalidKeyException, InvalidKeySpecException {
+System.err.println("[JVDBG] genPrivateImpl for " + keySpec);
 
         if (keySpec instanceof PKCS8EncodedKeySpec) {
             PKCS8EncodedKeySpec pkcsSpec = (PKCS8EncodedKeySpec) keySpec;
             byte[] encoded = pkcsSpec.getEncoded();
+System.err.println("[JVDBG] #bytes = " + encoded.length);
             try {
                 XDHPrivateKeyImpl result = new XDHPrivateKeyImpl(encoded);
+System.err.println("[JVDBG] result = " + result);
                 checkLockedParams(InvalidKeySpecException::new,
                         result.getParams());
+System.err.println("[JVDBG] result still ok:  " + result);
                 return result;
             } finally {
                 Arrays.fill(encoded, (byte) 0);

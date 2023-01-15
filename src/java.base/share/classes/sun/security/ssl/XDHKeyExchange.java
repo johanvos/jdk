@@ -106,6 +106,7 @@ final class XDHKeyExchange {
                 KeyPair kp = kpg.generateKeyPair();
                 privateKey = kp.getPrivate();
                 publicKey = (XECPublicKey) kp.getPublic();
+                SSLLogger.info("CDHEPossession generated public key with agl "+namedGroup.algorithm, publicKey);
             } catch (GeneralSecurityException e) {
                 throw new RuntimeException(
                         "Could not generate XDH keypair", e);

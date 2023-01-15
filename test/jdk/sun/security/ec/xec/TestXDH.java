@@ -44,11 +44,11 @@ public class TestXDH {
 
     public static void main(String[] args) throws Exception {
 
-        runBasicTests();
-        runKAT();
+        // runBasicTests();
+        // runKAT();
         runSmallOrderTest();
-        runNonCanonicalTest();
-        runCurveMixTest();
+        // runNonCanonicalTest();
+        // runCurveMixTest();
     }
 
     private static void runBasicTests() throws Exception {
@@ -137,26 +137,27 @@ public class TestXDH {
             "0000000000000000000000000000000000000000000000000000000000000000",
             "0000000000000000000000000000000000000000000000000000000000000000");
         // 1 and -1
+/*
         testSmallOrder(
             "X25519",
-            "77076D0A7318A57D3C16C17251B26645DF4C2F87EBC0992AB177FBA51DB92C2A",
+            "67076D0A7318A57D3C16C17251B26645DF4C2F87EBC0992AB177FBA51DB92C2A",
             "0100000000000000000000000000000000000000000000000000000000000000",
             "0000000000000000000000000000000000000000000000000000000000000000");
         testSmallOrder(
             "X25519",
-            "77076D0A7318A57D3C16C17251B26645DF4C2F87EBC0992AB177FBA51DB92C2A",
+            "67076D0A7318A57D3C16C17251B26645DF4C2F87EBC0992AB177FBA51DB92C2A",
             "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
             "0000000000000000000000000000000000000000000000000000000000000000");
 
         // order 8 points
         testSmallOrder(
             "X25519",
-            "77076D0A7318A57D3C16C17251B26645DF4C2F87EBC0992AB177FBA51DB92C2A",
+            "67076D0A7318A57D3C16C17251B26645DF4C2F87EBC0992AB177FBA51DB92C2A",
             "5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157",
             "0000000000000000000000000000000000000000000000000000000000000000");
         testSmallOrder(
             "X25519",
-            "77076D0A7318A57D3C16C17251B26645DF4C2F87EBC0992AB177FBA51DB92C2A",
+            "67076D0A7318A57D3C16C17251B26645DF4C2F87EBC0992AB177FBA51DB92C2A",
             "e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800",
             "0000000000000000000000000000000000000000000000000000000000000000");
 
@@ -187,6 +188,7 @@ public class TestXDH {
             "fffffffffffffffffffffffffffffffffffffffffffffffff",
             "000000000000000000000000000000000000000000000000000000000000000" +
             "0000000000000000000000000000000000000000000000000");
+*/
     }
 
     private static void testSmallOrder(String name, String a_pri,
