@@ -25,21 +25,63 @@
 package sun.security.ssl;
 
 import java.io.ByteArrayOutputStream;
+import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.XECPrivateKey;
+import java.security.interfaces.XECPublicKey;
 import java.security.spec.KeySpec;
 import java.security.spec.NamedParameterSpec;
 import java.security.spec.XECPrivateKeySpec;
+import java.util.Arrays;
+import java.util.HexFormat;
+import javax.crypto.KeyAgreement;
+import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import static sun.security.ssl.ClientHello.SUITEID;
 import static sun.security.ssl.ClientHello.generatePublicKeyFromPrivate;
+import static sun.security.ssl.ClientHello.getIterationStartOffset;
 
 class SomeWork {
 
-    static void deriveKeyPair(byte[] ikm) {
+    static byte[] ikmR = HexFormat.of().parseHex("6db9df30aa07dd42ee5e8181afdb977e538f5e1fec8a06223f33f7013e525037");
+    static byte[] ikme = HexFormat.of().parseHex("7268600d403fce431561aef583ee1613527cff655c1343f29812e66706df3234");
+
+    static void test9180A11() {
+        try {
+            KeyPair ephemeralKeyPair = deriveKeyPair(ikme);
+            System.err.println("pkEm = " + Arrays.toString(ephemeralKeyPair.getPublic().getEncoded()));
+            System.err.println("skEm = " + Arrays.toString(ephemeralKeyPair.getPrivate().getEncoded()));
+            KeyPair receiverKeyPair = deriveKeyPair(ikmR);
+            System.err.println("pkRm = " + Arrays.toString(receiverKeyPair.getPublic().getEncoded()));
+            System.err.println("skRm = " + Arrays.toString(receiverKeyPair.getPrivate().getEncoded()));
+            XECPrivateKey xpk = (XECPrivateKey)ephemeralKeyPair.getPrivate();
+            System.err.println("format = " +xpk.getFormat());
+            System.err.println("enc = "+Arrays.toString(xpk.getEncoded()));
+            System.err.println("scalar = "+Arrays.toString(xpk.getScalar().get()));
+            OSSL_HPKE_encap(ephemeralKeyPair, receiverKeyPair.getPublic());
+        } catch (Exception ex) {
+            System.err.println("PROBLEM!!!!\n\n\n");
+            ex.printStackTrace();
+        }
+    }
+    
+    static void OSSL_HPKE_encap(KeyPair ephemeralKeyPair, PublicKey remotePub) throws Exception {
+        encapsulate(ephemeralKeyPair, remotePub);
+
+        // encapsulate
+        // hpke_do_middle
+    }
+    
+    void do_middle() {
+        
+    }
+    static KeyPair deriveKeyPair(byte[] ikm) {
         try {
             HKDF hkdf = new HKDF("SHA256");
             SecretKeySpec salt = null;
@@ -69,14 +111,121 @@ class SomeWork {
             NamedParameterSpec paramSpec = new NamedParameterSpec("X25519");
             KeyFactory kf = KeyFactory.getInstance("XDH");
             KeySpec privateSpec = new XECPrivateKeySpec(paramSpec, eencoded);
-            PrivateKey privateKey = kf.generatePrivate(privateSpec);
-
-            PublicKey mypubkey = generatePublicKeyFromPrivate((XECPrivateKey) privateKey);
-
-            SSLLogger.info("SOMEderiveKeyPair results in ", mypubkey);
+            
+            PrivateKey myPrivateKey = kf.generatePrivate(privateSpec);
+            System.err.println("IN M, scalar = " +Arrays.toString(((XECPrivateKey)myPrivateKey).getScalar().get()));
+            PublicKey myPublicKey = generatePublicKeyFromPrivate((XECPrivateKey) myPrivateKey);
+            KeyPair keypair = new KeyPair(myPublicKey, myPrivateKey);
+            return keypair;
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+        return null;
     }
 
+    // dhkem_extract_and_expand
+    static private void encapsulate(KeyPair ephemeralPair, PublicKey remotePk) throws Exception {
+        PrivateKey sk = ephemeralPair.getPrivate();
+        PublicKey pkEm = ephemeralPair.getPublic();
+        NamedGroup ng = NamedGroup.X25519;
+        KeyAgreement ka = KeyAgreement.getInstance(ng.algorithm);
+        System.err.println("2");
+        ka.init(sk);
+        System.err.println("3");
+        Key sharedKey = ka.doPhase(remotePk, true);
+        System.err.println("4bis");
+        byte[] dh = ka.generateSecret();
+        System.err.println("sharedkey = " + sharedKey);
+        System.err.println("dhsharedkey = " + Arrays.toString(dh));
+        System.err.println("remote PUBKEY = " + Arrays.toString(remotePk.getEncoded())+ " and len = "+remotePk.getEncoded().length);
+        System.err.println("PUBKEY = " + Arrays.toString(pkEm.getEncoded())+ " and len = "+pkEm.getEncoded().length);
+    byte[] kemContext = new byte[64];
+    System.arraycopy(pkEm.getEncoded(), 12, kemContext, 0, 32);
+    System.arraycopy(remotePk.getEncoded(), 12, kemContext, 32, 32);
+        System.err.println("kemctx = "+Arrays.toString(kemContext)); 
+    byte[] sharedSecret = extractAndExpand(dh, kemContext);
+        System.err.println("SharedSecret = "+Arrays.toString(sharedSecret));
+    }
+    
+//    dhkem_extract_and_expand
+    static byte[] extractAndExpand(byte[] dh, byte[] kemctx) {
+        String suiteId = "";
+        int Nsecret = 32;
+        byte[] eae_prk = labeledExtract("".getBytes(), "eae_prk".getBytes(), SUITEID, dh);
+        System.err.println("Result of firstextract " + Arrays.toString(eae_prk));
+        byte[] shared_secret = labeledExpand(eae_prk, "shared_secret".getBytes(),
+                kemctx, Nsecret);
+        return shared_secret;
+    }
+
+    static byte[] labeledExtract(byte[] salt, byte[] label, byte[] suite_id, byte[] ikm) {
+        byte[] labeled_ikm = concat("HPKE-v1".getBytes(), concat(suite_id, concat(label, ikm)));
+        System.err.println("LabeledExtract, likm = "+Arrays.toString(labeled_ikm));
+        return extract(salt, labeled_ikm);
+    }
+
+    static byte[] labeledExpand(byte[] prk, byte[] label, byte[] info,  int l) {
+        byte[] labeled_info = concat(new byte[]{0x0, 0x20}, concat("HPKE-v1".getBytes(), concat(SUITEID, concat(label, info))));
+        System.err.println("Labeledexpand, linfosize = "+labeled_info.length+" content = "+Arrays.toString(labeled_info));
+        return expand(prk, labeled_info, l);
+    }
+
+    static private byte[] extract(byte[] salt, byte[] inputKeyMaterial) {
+        System.err.println("extract with "+inputKeyMaterial.length+" bytes.");
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            if ((salt == null) || (salt.length == 0)) {
+                salt = new byte[inputKeyMaterial.length];
+                for (int i = 0; i < salt.length;i++) salt[i] = (byte)0;
+            }
+            mac.init(new SecretKeySpec(salt, "HmacSHA256"));
+            return mac.doFinal(inputKeyMaterial);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    static final int HASH_OUTPUT_SIZE=32;
+
+    static private byte[] expand(byte[] prk, byte[] info, int outputSize) {
+        try {
+            int iterations = (int) Math.ceil((double) outputSize / (double) HASH_OUTPUT_SIZE);
+            byte[] mixin = new byte[0];
+            ByteArrayOutputStream results = new ByteArrayOutputStream();
+            int remainingBytes = outputSize;
+
+            for (int i = getIterationStartOffset(); i < iterations + getIterationStartOffset(); i++) {
+                Mac mac = Mac.getInstance("HmacSHA256");
+                mac.init(new SecretKeySpec(prk, "HmacSHA256"));
+
+                mac.update(mixin);
+                if (info != null) {
+                    mac.update(info);
+                }
+                mac.update((byte) i);
+
+                byte[] stepResult = mac.doFinal();
+                int stepSize = Math.min(remainingBytes, stepResult.length);
+
+                results.write(stepResult, 0, stepSize);
+
+                mixin = stepResult;
+                remainingBytes -= stepSize;
+            }
+
+            return results.toByteArray();
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new AssertionError(e);
+        }
+    }
+    static byte[] concat(byte[] a, byte[] b) {
+        int al = a.length; 
+        int bl = b.length;
+        byte[] c = new byte[al + bl];
+        System.arraycopy(a, 0, c, 0, al);
+        System.arraycopy(b, 0, c, al, bl);
+        System.err.println("contact "+Arrays.toString(a)+" and "+Arrays.toString(b)+" and return " + Arrays.toString(c));
+        return c;        
+    }
+    
 }

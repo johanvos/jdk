@@ -1807,7 +1807,7 @@ throw new IOException (ex);
     
     static void deriveKeyPair(byte[] ikm) {
 //        try {
-            SomeWork.deriveKeyPair(ikm);
+            SomeWork.test9180A11();
 //            HKDF hkdf = new HKDF("SHA256");
 //            SecretKeySpec salt = null;
 //            ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -1864,8 +1864,8 @@ throw new IOException (ex);
         int al = a.length; 
         int bl = b.length;
         byte[] c = new byte[al + bl];
-        System.arraycopy(c, 0, a, 0, al);
-        System.arraycopy(c, al, b, 0, bl);
+        System.arraycopy(a, 0, c, 0, al);
+        System.arraycopy(b, 0, c, al, bl);
         return c;        
     }
     
