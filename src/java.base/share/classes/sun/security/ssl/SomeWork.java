@@ -96,6 +96,10 @@ class SomeWork {
         System.err.println("secret bytes = "+Arrays.toString(secret));
         byte[] key = labeledExpand(secret, "key".getBytes(), key_schedule_context, SUITEID2,16);
         System.err.println("key = "+Arrays.toString(key));
+        byte[] base_nonce = labeledExpand(secret, "base_nonce".getBytes(), key_schedule_context, SUITEID2, 12);
+        System.err.println("base_nonce = " + Arrays.toString(base_nonce));
+        byte[] exporter_secret = labeledExpand(secret, "exp".getBytes(), key_schedule_context, SUITEID2, 32);
+        System.err.println("exporter_secret = " + Arrays.toString(exporter_secret));
         System.err.println("DO_MIDDLE done");
    }
     static KeyPair deriveKeyPair(byte[] ikm) {
