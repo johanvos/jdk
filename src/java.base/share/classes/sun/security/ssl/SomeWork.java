@@ -43,11 +43,13 @@ import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import static sun.security.ssl.ClientHello.SUITEID;
 import static sun.security.ssl.ClientHello.generatePublicKeyFromPrivate;
 import static sun.security.ssl.ClientHello.getIterationStartOffset;
 
 class SomeWork {
+    
+    static final byte[] SUITEID = new byte[]{0x4b, 0x45, 0x4d, 0x0, 0x20}; //KEM0x0020
+    static final byte[] SUITEID2 = new byte[]{0x48,0x50,0x4B,0x45,0x0,0x20,0x0,0x1,0x0,0x1}; //HPKE[kemid,kdfid,aeadid]
 
     static byte[] ikmR = HexFormat.of().parseHex("6db9df30aa07dd42ee5e8181afdb977e538f5e1fec8a06223f33f7013e525037");
     static byte[] ikme = HexFormat.of().parseHex("7268600d403fce431561aef583ee1613527cff655c1343f29812e66706df3234");
@@ -70,17 +72,32 @@ class SomeWork {
             ex.printStackTrace();
         }
     }
-    
-    static void OSSL_HPKE_encap(KeyPair ephemeralKeyPair, PublicKey remotePub) throws Exception {
-        encapsulate(ephemeralKeyPair, remotePub);
 
+    static void OSSL_HPKE_encap(KeyPair ephemeralKeyPair, PublicKey remotePub) throws Exception {
+        byte[] sharedSecret = encapsulate(ephemeralKeyPair, remotePub);
+        do_middle(sharedSecret);
         // encapsulate
         // hpke_do_middle
     }
-    
-    void do_middle() {
+
+   static void do_middle(byte[] sharedSecret) {
+       System.err.println("DO_MIDDLE start");
+        byte[] l1 = labeledExtract("".getBytes(),"psk_id_hash".getBytes(), SUITEID2, "".getBytes());
+        System.err.println("Extract phase 1: "+Arrays.toString(l1));
+        byte[] info = "Ode on a Grecian Urn".getBytes();
+        byte[] l2 = labeledExtract("".getBytes(),"info_hash".getBytes(), SUITEID2, info);
+        System.err.println("Extract phase 2: "+Arrays.toString(l2));
+        byte[] key_schedule_context = new byte[l1.length+l2.length+1];
+        key_schedule_context[0] = 0;
+        System.arraycopy(l1, 0, key_schedule_context, 1, l1.length);
+        System.arraycopy(l2, 0, key_schedule_context, l1.length+1, l2.length);
         
-    }
+        byte[] secret = labeledExtract(sharedSecret, "secret".getBytes(), SUITEID2,"".getBytes());
+        System.err.println("secret bytes = "+Arrays.toString(secret));
+        byte[] key = labeledExpand(secret, "key".getBytes(), key_schedule_context, SUITEID2,16);
+        System.err.println("key = "+Arrays.toString(key));
+        System.err.println("DO_MIDDLE done");
+   }
     static KeyPair deriveKeyPair(byte[] ikm) {
         try {
             HKDF hkdf = new HKDF("SHA256");
@@ -124,7 +141,7 @@ class SomeWork {
     }
 
     // dhkem_extract_and_expand
-    static private void encapsulate(KeyPair ephemeralPair, PublicKey remotePk) throws Exception {
+    static private byte[] encapsulate(KeyPair ephemeralPair, PublicKey remotePk) throws Exception {
         PrivateKey sk = ephemeralPair.getPrivate();
         PublicKey pkEm = ephemeralPair.getPublic();
         NamedGroup ng = NamedGroup.X25519;
@@ -145,27 +162,29 @@ class SomeWork {
         System.err.println("kemctx = "+Arrays.toString(kemContext)); 
     byte[] sharedSecret = extractAndExpand(dh, kemContext);
         System.err.println("SharedSecret = "+Arrays.toString(sharedSecret));
+        return sharedSecret;
     }
     
 //    dhkem_extract_and_expand
     static byte[] extractAndExpand(byte[] dh, byte[] kemctx) {
-        String suiteId = "";
         int Nsecret = 32;
         byte[] eae_prk = labeledExtract("".getBytes(), "eae_prk".getBytes(), SUITEID, dh);
         System.err.println("Result of firstextract " + Arrays.toString(eae_prk));
         byte[] shared_secret = labeledExpand(eae_prk, "shared_secret".getBytes(),
-                kemctx, Nsecret);
+                kemctx,SUITEID, Nsecret);
         return shared_secret;
     }
 
     static byte[] labeledExtract(byte[] salt, byte[] label, byte[] suite_id, byte[] ikm) {
         byte[] labeled_ikm = concat("HPKE-v1".getBytes(), concat(suite_id, concat(label, ikm)));
-        System.err.println("LabeledExtract, likm = "+Arrays.toString(labeled_ikm));
+        System.err.println("LabeledExtract, likm("+ labeled_ikm.length+") = "+Arrays.toString(labeled_ikm));
         return extract(salt, labeled_ikm);
     }
 
-    static byte[] labeledExpand(byte[] prk, byte[] label, byte[] info,  int l) {
-        byte[] labeled_info = concat(new byte[]{0x0, 0x20}, concat("HPKE-v1".getBytes(), concat(SUITEID, concat(label, info))));
+    static byte[] labeledExpand(byte[] prk, byte[] label, byte[] info, byte[] suite_id, int l) {
+        byte hi = (byte) (l/256);
+        byte lo = (byte) (l%256);
+        byte[] labeled_info = concat(new byte[]{hi, lo}, concat("HPKE-v1".getBytes(), concat(suite_id, concat(label, info))));
         System.err.println("Labeledexpand, linfosize = "+labeled_info.length+" content = "+Arrays.toString(labeled_info));
         return expand(prk, labeled_info, l);
     }

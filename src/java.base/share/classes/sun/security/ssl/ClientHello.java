@@ -1803,7 +1803,6 @@ throw new IOException (ex);
         }
     }
     
-    static final byte[] SUITEID = new byte[]{0x4b, 0x45, 0x4d, 0x0, 0x20}; //KEM0x0020
     
     static void deriveKeyPair(byte[] ikm) {
 //        try {
