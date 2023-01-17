@@ -39,9 +39,12 @@ import java.security.spec.NamedParameterSpec;
 import java.security.spec.XECPrivateKeySpec;
 import java.util.Arrays;
 import java.util.HexFormat;
+import javax.crypto.Cipher;
 import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import static sun.security.ssl.ClientHello.generatePublicKeyFromPrivate;
 import static sun.security.ssl.ClientHello.getIterationStartOffset;
@@ -53,6 +56,8 @@ class SomeWork {
 
     static byte[] ikmR = HexFormat.of().parseHex("6db9df30aa07dd42ee5e8181afdb977e538f5e1fec8a06223f33f7013e525037");
     static byte[] ikme = HexFormat.of().parseHex("7268600d403fce431561aef583ee1613527cff655c1343f29812e66706df3234");
+    static byte[] aad = HexFormat.of().parseHex("436f756e742d30");
+    static byte[] pt = HexFormat.of().parseHex("4265617574792069732074727574682c20747275746820626561757479");
 
     static void test9180A11() {
         try {
@@ -66,21 +71,35 @@ class SomeWork {
             System.err.println("format = " +xpk.getFormat());
             System.err.println("enc = "+Arrays.toString(xpk.getEncoded()));
             System.err.println("scalar = "+Arrays.toString(xpk.getScalar().get()));
-            OSSL_HPKE_encap(ephemeralKeyPair, receiverKeyPair.getPublic());
+            HpkeContext context = OSSL_HPKE_encap(ephemeralKeyPair, receiverKeyPair.getPublic());
+            OSSL_HPKE_seal(context, aad, pt);
         } catch (Exception ex) {
             System.err.println("PROBLEM!!!!\n\n\n");
             ex.printStackTrace();
         }
     }
 
-    static void OSSL_HPKE_encap(KeyPair ephemeralKeyPair, PublicKey remotePub) throws Exception {
+    static HpkeContext OSSL_HPKE_encap(KeyPair ephemeralKeyPair, PublicKey remotePub) throws Exception {
         byte[] sharedSecret = encapsulate(ephemeralKeyPair, remotePub);
-        do_middle(sharedSecret);
-        // encapsulate
-        // hpke_do_middle
+        return do_middle(sharedSecret);
     }
 
-   static void do_middle(byte[] sharedSecret) {
+    static void OSSL_HPKE_seal(HpkeContext context, byte[] aad, byte[] pt) throws Exception {
+        // we assume aeadId = 0x0001 which is AES-GCM-128
+        final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        byte[] iv = context.nonce;
+        GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv); //128 bit auth tag length
+        
+        SecretKey secretKey = new SecretKeySpec(context.key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
+        cipher.updateAAD(aad);
+        System.err.println("Got cipher: " + cipher);
+        byte[] fin = cipher.doFinal(pt);
+        byte[] answer = new byte[pt.length + 16];
+        SSLLogger.info("Cipher", fin);
+    }
+    
+   static HpkeContext do_middle(byte[] sharedSecret) {
        System.err.println("DO_MIDDLE start");
         byte[] l1 = labeledExtract("".getBytes(),"psk_id_hash".getBytes(), SUITEID2, "".getBytes());
         System.err.println("Extract phase 1: "+Arrays.toString(l1));
@@ -101,6 +120,10 @@ class SomeWork {
         byte[] exporter_secret = labeledExpand(secret, "exp".getBytes(), key_schedule_context, SUITEID2, 32);
         System.err.println("exporter_secret = " + Arrays.toString(exporter_secret));
         System.err.println("DO_MIDDLE done");
+        HpkeContext answer = new HpkeContext();
+        answer.key = key;
+        answer.nonce = base_nonce;
+        return answer;
    }
     static KeyPair deriveKeyPair(byte[] ikm) {
         try {
@@ -251,4 +274,8 @@ class SomeWork {
         return c;        
     }
     
+    static class HpkeContext {
+        byte[] key;
+        byte[] nonce;
+    }
 }
