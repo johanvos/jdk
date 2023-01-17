@@ -25,15 +25,18 @@
 package sun.security.ssl;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.interfaces.XECPrivateKey;
-import java.security.interfaces.XECPublicKey;
 import java.security.spec.KeySpec;
 import java.security.spec.NamedParameterSpec;
 import java.security.spec.XECPrivateKeySpec;
@@ -44,10 +47,8 @@ import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import static sun.security.ssl.ClientHello.generatePublicKeyFromPrivate;
-import static sun.security.ssl.ClientHello.getIterationStartOffset;
+import static sun.security.ssl.NamedGroup.X25519;
 
 class SomeWork {
     
@@ -58,8 +59,23 @@ class SomeWork {
     static byte[] ikme = HexFormat.of().parseHex("7268600d403fce431561aef583ee1613527cff655c1343f29812e66706df3234");
     static byte[] aad = HexFormat.of().parseHex("436f756e742d30");
     static byte[] pt = HexFormat.of().parseHex("4265617574792069732074727574682c20747275746820626561757479");
+    static    byte[] info = "Ode on a Grecian Urn".getBytes();
 
     static void test9180A11() {
+        try {
+            KeyPair ephemeralKeyPair = deriveKeyPair(ikme);
+            KeyPair receiverKeyPair = deriveKeyPair(ikmR);
+            HPKEContext context = new HPKEContext(receiverKeyPair.getPublic(), ephemeralKeyPair, info);
+            context.create();
+            byte[] seal = context.seal(aad, pt);
+            System.err.println("FINALLY, seal = ");
+            SSLLogger.info("CIPHERSEAL = ",seal);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+    
+    static void oldtest9180A11() {
         try {
             KeyPair ephemeralKeyPair = deriveKeyPair(ikme);
             System.err.println("pkEm = " + Arrays.toString(ephemeralKeyPair.getPublic().getEncoded()));
@@ -72,7 +88,10 @@ class SomeWork {
             System.err.println("enc = "+Arrays.toString(xpk.getEncoded()));
             System.err.println("scalar = "+Arrays.toString(xpk.getScalar().get()));
             HpkeContext context = OSSL_HPKE_encap(ephemeralKeyPair, receiverKeyPair.getPublic());
-            OSSL_HPKE_seal(context, aad, pt);
+            HPKEContext ctx = new HPKEContext(context.nonce, context.key, info);
+            byte[] sealed = ctx.seal(aad, pt);
+            System.err.println("finalresult = "+Arrays.toString(sealed));
+//            OSSL_HPKE_seal(context, aad, pt);
         } catch (Exception ex) {
             System.err.println("PROBLEM!!!!\n\n\n");
             ex.printStackTrace();
@@ -84,7 +103,8 @@ class SomeWork {
         return do_middle(sharedSecret);
     }
 
-    static void OSSL_HPKE_seal(HpkeContext context, byte[] aad, byte[] pt) throws Exception {
+    // replace by HPKEContext.seal
+    static void oldOSSL_HPKE_seal(HpkeContext context, byte[] aad, byte[] pt) throws Exception {
         // we assume aeadId = 0x0001 which is AES-GCM-128
         final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         byte[] iv = context.nonce;
@@ -103,7 +123,6 @@ class SomeWork {
        System.err.println("DO_MIDDLE start");
         byte[] l1 = labeledExtract("".getBytes(),"psk_id_hash".getBytes(), SUITEID2, "".getBytes());
         System.err.println("Extract phase 1: "+Arrays.toString(l1));
-        byte[] info = "Ode on a Grecian Urn".getBytes();
         byte[] l2 = labeledExtract("".getBytes(),"info_hash".getBytes(), SUITEID2, info);
         System.err.println("Extract phase 2: "+Arrays.toString(l2));
         byte[] key_schedule_context = new byte[l1.length+l2.length+1];
@@ -180,7 +199,7 @@ class SomeWork {
         System.err.println("4bis");
         byte[] dh = ka.generateSecret();
         System.err.println("sharedkey = " + sharedKey);
-        System.err.println("dhsharedkey = " + Arrays.toString(dh));
+        System.err.println("DHsharedkey = " + Arrays.toString(dh));
         System.err.println("remote PUBKEY = " + Arrays.toString(remotePk.getEncoded())+ " and len = "+remotePk.getEncoded().length);
         System.err.println("PUBKEY = " + Arrays.toString(pkEm.getEncoded())+ " and len = "+pkEm.getEncoded().length);
     byte[] kemContext = new byte[64];
@@ -203,9 +222,24 @@ class SomeWork {
     }
 
     static byte[] labeledExtract(byte[] salt, byte[] label, byte[] suite_id, byte[] ikm) {
-        byte[] labeled_ikm = concat("HPKE-v1".getBytes(), concat(suite_id, concat(label, ikm)));
-        System.err.println("LabeledExtract, likm("+ labeled_ikm.length+") = "+Arrays.toString(labeled_ikm));
-        return extract(salt, labeled_ikm);
+        try {
+            byte[] labeled_ikm = concat("HPKE-v1".getBytes(), concat(suite_id, concat(label, ikm)));
+            System.err.println("HKDFLabeledExtract, likm("+ labeled_ikm.length+") = "+Arrays.toString(labeled_ikm));
+            HKDF hkdf = new HKDF("SHA256");
+            SecretKeySpec inputKey = new SecretKeySpec(labeled_ikm, "HKDF-IMK");
+            SecretKeySpec saltks = null;
+if (salt.length >0) {
+    System.err.println("SALT has length "+salt.length);
+    saltks = new SecretKeySpec(salt, "HmacSHA256");
+}
+            return hkdf.extract(saltks, inputKey, "hkdf").getEncoded();
+    //        return extract(salt, labeled_ikm);
+        } catch (NoSuchAlgorithmException ex) {
+            ex.printStackTrace();
+        } catch (InvalidKeyException ex) {
+            ex.printStackTrace();
+        }
+        return null;
     }
 
     static byte[] labeledExpand(byte[] prk, byte[] label, byte[] info, byte[] suite_id, int l) {
@@ -234,13 +268,17 @@ class SomeWork {
     static final int HASH_OUTPUT_SIZE=32;
 
     static private byte[] expand(byte[] prk, byte[] info, int outputSize) {
+                System.err.println("MYLEGACYexpand");
+        System.err.println("PRK = "+Arrays.toString(prk));
+        System.err.println("INFO = "+Arrays.toString(info));
+        System.err.println("OS = "+outputSize);
         try {
             int iterations = (int) Math.ceil((double) outputSize / (double) HASH_OUTPUT_SIZE);
             byte[] mixin = new byte[0];
             ByteArrayOutputStream results = new ByteArrayOutputStream();
             int remainingBytes = outputSize;
 
-            for (int i = getIterationStartOffset(); i < iterations + getIterationStartOffset(); i++) {
+            for (int i = 1; i < iterations + 1 ; i++) {
                 Mac mac = Mac.getInstance("HmacSHA256");
                 mac.init(new SecretKeySpec(prk, "HmacSHA256"));
 
@@ -277,5 +315,27 @@ class SomeWork {
     static class HpkeContext {
         byte[] key;
         byte[] nonce;
+    }
+    
+    public static  PublicKey generatePublicKeyFromPrivate(XECPrivateKey privateKey) throws GeneralSecurityException {
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(X25519.name);
+        keyPairGenerator.initialize(new NamedParameterSpec(X25519.name), new StaticSecureRandom(privateKey.getScalar().get()));
+        return keyPairGenerator.generateKeyPair().getPublic();
+    }
+        
+    public static class StaticSecureRandom extends SecureRandom {
+ private static final long serialVersionUID = 1234567L;
+
+        private final byte[] privateKey;
+
+        public StaticSecureRandom(byte[] privateKey) {
+            this.privateKey = privateKey.clone();
+        }
+
+        @Override
+        public void nextBytes(byte[] bytes) {
+            System.arraycopy(privateKey, 0, bytes, 0, privateKey.length);
+        }
+
     }
 }

@@ -45,7 +45,6 @@ public final class XDHPrivateKeyImpl extends PKCS8Key implements XECPrivateKey {
 
     XDHPrivateKeyImpl(XECParameters params, byte[] k)
             throws InvalidKeyException {
-Thread.dumpStack();
 
         this.paramSpec = new NamedParameterSpec(params.getName());
         this.k = k.clone();
@@ -63,7 +62,6 @@ Thread.dumpStack();
 
     XDHPrivateKeyImpl(byte[] encoded) throws InvalidKeyException {
         super(encoded);
-Thread.dumpStack();
         XECParameters params = XECParameters.get(
             InvalidKeyException::new, algid);
         paramSpec = new NamedParameterSpec(params.getName());
