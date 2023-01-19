@@ -280,7 +280,9 @@ abstract class HandshakeContext implements ConnectionContext {
             for (CipherSuite suite : sslConfig.enabledCipherSuites) {
                 if (suite.isAvailable() && suite.supports(protocol)) {
                     if (isActivatable(sslConfig, suite,
-                            algorithmConstraints, cachedStatus)) {
+                            algorithmConstraints, cachedStatus)
+                            && protocol.useTLS13PlusSpec()
+                            ) {
                         protocols.add(protocol);
                         found = true;
                         break;
@@ -312,7 +314,7 @@ abstract class HandshakeContext implements ConnectionContext {
             SSLConfiguration sslConfig,
             List<ProtocolVersion> enabledProtocols,
             AlgorithmConstraints algorithmConstraints) {
-
+        System.err.println("[JVDBG] getActiveCipherSuites, enabledProtocols = "+enabledProtocols);
         List<CipherSuite> suites = new LinkedList<>();
         if (enabledProtocols != null && !enabledProtocols.isEmpty()) {
             Map<NamedGroupSpec, Boolean> cachedStatus =

@@ -314,6 +314,8 @@ final class ClientHello {
                 encoded[i++] = (byte)(id >> 8);
                 encoded[i++] = (byte)id;
             }
+            System.err.println("[JVDBG] encodedciphersuites takes "+encoded.length+" bytes");
+            SSLLogger.info("Encoded ciphersuites = ", encoded);
             return encoded;
         }
 
@@ -372,6 +374,7 @@ final class ClientHello {
             hos.putInt8((byte) ((clientVersion >>> 8) & 0xFF));
             hos.putInt8((byte) (clientVersion & 0xFF));
             hos.write(clientRandom.randomBytes, 0, 32);
+            hos.putInt8(0); // empty session id
             hos.putBytes16(getEncodedCipherSuites());
             hos.putBytes8(compressionMethod);
             this.extensions.sendCompressed(hos);
@@ -711,34 +714,22 @@ SSLLogger.fine("Now produce extensions", chc);
             innerCh[3] = (byte)(clw %256);
             clw = clw/256;
             innerCh[2] = (byte)(clw % 256);
-            innerCh[1] = (byte)(clw / 256);
-SSLLogger.info("inner CH ("+(cl+4)+"): ", innerCh);
-byte[] crb = innerChm.clientRandom.randomBytes;
-SSLLogger.info("inner, client_random ("+crb.length+")", crb);
-byte[] isid = innerChm.sessionId.getId();
-SSLLogger.info("inner, session_id ("+isid.length+")", isid);
-byte[] clear = innerChm.getEncodedByteArray();
-SSLLogger.info("encoded inner CH ", clear);
+            innerCh[1] = (byte) (clw / 256);
+            SSLLogger.info("inner CH (" + (cl + 4) + "): ", innerCh);
+            byte[] crb = innerChm.clientRandom.randomBytes;
+            SSLLogger.info("inner, client_random (" + crb.length + ")", crb);
+            byte[] isid = innerChm.sessionId.getId();
+            SSLLogger.info("inner, session_id (" + isid.length + ")", isid);
+            byte[] clear = innerChm.getEncodedByteArray();
+            SSLLogger.info("encoded inner CH ", clear);
 
-SSLLogger.info("outer, client_random ("+crb.length+")", chm.clientRandom.randomBytes);
-SSLLogger.info("outer, session_id", chm.sessionId.getId());
+            SSLLogger.info("outer, client_random (" + crb.length + ")", chm.clientRandom.randomBytes);
+            SSLLogger.info("outer, session_id", chm.sessionId.getId());
 
+            SSLLogger.info("selected version: " + echConfig.getVersion() + ", configid = " + echConfig.getConfigId());
+            SSLLogger.info("peer pub: ", echConfig.getPublicKey());
+int clearLen = calculateClearLength(clear.length, echConfig.getMaxNameLength());
 
-SSLLogger.info("selected version: "+echConfig.getVersion()+", configid = "+echConfig.getConfigId());
-SSLLogger.info("peer pub: ", echConfig.getPublicKey());
-
-        int innersnipadding = 0;
-        int lengthWithSniPadding = innersnipadding + clear.length;
-        int lengthOfPadding = 31 - ((lengthWithSniPadding - 1) % 32);
-        int lengthWithPadding = clear.length + lengthOfPadding + innersnipadding;
-        while (lengthWithPadding < OSSL_ECH_PADDING_TARGET) {
-            lengthWithPadding += OSSL_ECH_PADDING_INCREMENT;
-        }
-            int clearLen = lengthWithPadding;
-            SSLLogger.info("EAAE: padding: mnl " + echConfig.getMaxNameLength() + ", lws: " + lengthWithSniPadding
-                    + ",lop: " + lengthOfPadding + ", lwp: " + lengthWithPadding
-                    + ", clear_len: " + clearLen + ", orig: " + clear.length);
-            SSLLogger.info("Raw ECHConfig: ", echConfig.getRaw());
             byte[] info = makeInfo();
             SSLLogger.info("info", info);
             System.err.println("CREATING HPKECONTEXT");
@@ -746,30 +737,31 @@ SSLLogger.info("peer pub: ", echConfig.getPublicKey());
             PublicKey peerPub = HPKEContext.convertEncodedPublicKey(echConfig.getPublicKey());
             KeyPair ephemeral = HPKEContext.deriveKeyPair(null);
             this.ephemeralPub = ephemeral.getPublic();
+            SSLLogger.info("mypublickey", ephemeralPub);
             HPKEContext hpkeContext = new HPKEContext(peerPub,ephemeral, info);
             hpkeContext.create();
             System.err.println("CREATED HPKECONTEXT");
-           // byte[] sharedKey = encapsulateKey(chc, peerPub);
-            //System.err.println("sk = "+sharedKey);
-            //SSLLogger.info("SharedKey", sharedKey);
             
             byte[] pkt = chm.toByteArray();
-            SSLLogger.info("pkt0", pkt);
+            SSLLogger.info("pkt0 ("+pkt.length+")", pkt);
             int cipherlen = clearLen + 16; // not valid for all AEAD
             int oldlen = pkt.length;
-            pkt = expandOuterCH(pkt, this.ephemeralPub.getEncoded(), cipherlen);
-            int cipherStart = pkt.length - cipherlen;
-            SSLLogger.info("pkt", pkt);
+            pkt = expandOuterCH(pkt, (byte)this.echConfig.configId, getPubBytes(this.ephemeralPub), cipherlen);
+            SSLLogger.info("pkt ("+pkt.length+")", pkt);
             byte[] aad = new byte[pkt.length - 4];
-            System.arraycopy(pkt,0, aad,0, aad.length);
-          
+            int cipherStart = aad.length - cipherlen;
+            System.err.println("pktlen = "+pkt.length+", aadlen = "+aad.length+", cipherlen = "+cipherlen);
+            System.arraycopy(pkt,4, aad,0, aad.length);
+          // add first 
             byte[] cipher = hpkeContext.seal(aad, clear);
+            System.arraycopy(cipher, 0, aad, cipherStart, cipherlen);
             
      //       byte[] cipher = encrypt(sharedKey, aad, clear);
             
             
             byte[] newCH = new byte[pkt.length - oldlen+1];
-            System.arraycopy(pkt, oldlen-1, newCH, 0, newCH.length);
+            System.err.println("AADlen = " + aad.length+", newCH len = "+newCH.length+", cipherlen = " + cipherlen+", clearLen = "+clearLen);
+            System.arraycopy(aad, oldlen-5, newCH, 0, newCH.length);
           //  System.arraycopy(cipher, 0, pkt, cipherStart, cipher.length);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ClientHello handshake message", chm);
@@ -797,6 +789,30 @@ SSLLogger.info("peer pub: ", echConfig.getPublicKey());
             return null;
         }
 
+        private int calculateClearLength(int il, int mnl) {
+            if (mnl > 0) {
+                System.err.println("WARNING, ECHCONFIG DEFINED MAXNAMELENGTH! not supported!");
+            }
+            int innersnipadding = 0;
+            int lengthWithSniPadding = innersnipadding + il;
+            int lengthOfPadding = 31 - ((lengthWithSniPadding - 1) % 32);
+            int lengthWithPadding = il + lengthOfPadding + innersnipadding;
+            while (lengthWithPadding < OSSL_ECH_PADDING_TARGET) {
+                lengthWithPadding += OSSL_ECH_PADDING_INCREMENT;
+            }
+            int clearLen = lengthWithPadding;
+            SSLLogger.info("EAAE: Padding: mnl " + echConfig.getMaxNameLength() + ", lws: " + lengthWithSniPadding
+                    + ",lop: " + lengthOfPadding + ", lwp: " + lengthWithPadding
+                    + ", clear_len: " + clearLen + ", orig: " + il);
+
+            return clearLen;
+        }
+
+        private byte[] getPubBytes(PublicKey pk) {
+            byte[] answer = new byte[32];
+            System.arraycopy(pk.getEncoded(), 12, answer, 0, 32);
+            return answer;
+        }
         private byte[] makeInfo() {
             byte[] oecb = OSSL_ECH_CONTEXT_STRING.getBytes();
             byte[] info = new byte[oecb.length + 1 + echConfig.getRaw().length];
@@ -806,93 +822,14 @@ SSLLogger.info("peer pub: ", echConfig.getPublicKey());
             return info;
         }
     
-        private PublicKey convertPeerPublicKey(byte[] uBytes) throws IOException {
-            try {
-                NamedGroup ng = NamedGroup.X25519;
-                Utilities.reverseBytes(uBytes);
-                BigInteger u = new BigInteger(1, uBytes);
-                XECPublicKeySpec xecPublicKeySpec = new XECPublicKeySpec(
-                        new NamedParameterSpec(ng.name), u);
-                KeyFactory factory = KeyFactory.getInstance(ng.algorithm);
-                XECPublicKey publicKey = (XECPublicKey) factory.generatePublic(
-                        xecPublicKeySpec);
-                return publicKey;
-            } catch (Exception e) {
-                throw new IOException(e);
-
-            }
-
-        }
-
-        private byte[] encapsulateKey(ClientHandshakeContext chc, PublicKey peerPub) throws IOException {
-            try {
-                SSLLogger.info("START ENCAPSULATING KEY", peerPub);
-                NamedGroup ng = NamedGroup.X25519;
-                System.err.println("alg = " + ng.algorithm);
-                byte[] ikme = HexFormat.of().parseHex("7268600d403fce431561aef583ee1613527cff655c1343f29812e66706df3234");
-SSLLogger.info("IKME: "+ikme.length, ikme);
-//                NamedParameterSpec paramSpec = new NamedParameterSpec("X25519");
-//                KeyFactory kf = KeyFactory.getInstance("XDH");
-//                KeySpec privateSpec = new XECPrivateKeySpec(paramSpec, ikme);
-//                PrivateKey aPrivate = kf.generatePrivate(privateSpec);
-//SSLLogger.info("ENCODED: " , aPrivate.getEncoded());
-                deriveKeyPair(ikme);
-                
-                
-                
-                
-                
-                KeyPairGenerator kpg
-                        = KeyPairGenerator.getInstance(ng.algorithm);
-              //  IvParameterSpec ivParameterSpec = new IvParameterSpec(ikme);
-              //  kpg.initialize(ivParameterSpec);
-                KeyPair kp = kpg.generateKeyPair();
-         //       PrivateKey aPrivate = kp.getPrivate();
-                XECPublicKey xpk = (XECPublicKey) kp.getPublic();
-           //     SSLLogger.info("GOTFIRSTKEY", aPrivate, xpk);
-                
-                
-                SSLKeyExchange ke = SSLKeyExchange.valueOf(ng);
-                System.err.println("KeyExchange class = "+ke.getClass());
-                SSLPossession[] sslpos = ke.createPossessions(chc);
-                System.err.println("sslpos length = "+sslpos.length);
-                SSLLogger.info("SSLPOSSS", sslpos[0]);
-                NamedGroupPossession ngp = (NamedGroupPossession)sslpos[0];
-                SSLLogger.info("public bytes = ", ngp.encode());
-                SSLLogger.info("pubkey = ", ngp.getPublicKey());
-                this.ephemeralPub = ngp.getPublicKey();
-                System.err.println("PKclass = "+ngp.getPublicKey().getClass());
-                SSLLogger.info("private key = ", ngp.getPrivateKey());
-                KAKeyDerivation kd = new KAKeyDerivation(ng.algorithm,chc, ngp.getPrivateKey(),peerPub);
-                SSLLogger.info("KEYderivation = ", kd);
-                System.err.println("1");
-                KeyAgreement ka = KeyAgreement.getInstance(ng.algorithm);
-                System.err.println("2");
-                ka.init(ngp.getPrivateKey());
-                System.err.println("3");
-                Key sharedKey = ka.doPhase(peerPub, true);
-                System.err.println("4");
-                byte[] dh = ka.generateSecret();
-                System.err.println("sharedkey = "+sharedKey);
-                byte[] kemContext = new byte[64];
-                System.arraycopy(this.ephemeralPub.getEncoded(), 0, kemContext, 0, 32);
-                System.arraycopy(peerPub.getEncoded(), 0, kemContext, 32, 32);
-                byte[] answer = extractAndExpand(dh, kemContext);
-                return answer;
-            } catch (Exception  ex) {
-                ex.printStackTrace();
-throw new IOException (ex);
-            }
-        }
-        
-        private byte[] expandOuterCH(byte[] src, byte[] mypub, int cipherlen) {
-            System.err.println("expand, src size = " + src.length);
+        private byte[] expandOuterCH(byte[] src,byte cfgid, byte[] mypub, int cipherlen) {
+            System.err.println("expand, src size = " + src.length+", cipherlen = "+cipherlen);
             byte KDF_HI = 0x0; //should come from EchConfig
             byte KDF_LO = 0x1;
             byte AEAD_HI = 0x0;
             byte AEAD_LO = 0x1;
             int ol = src.length-3; // remove encrypted_client_hello length + 00
-            int will_add = 43;
+            int will_add = 44;
             int ef0dlength=1 + 4 + 1 + 2 + mypub.length+2+cipherlen;
             byte[] answer = new byte[ol+will_add+cipherlen];
             System.arraycopy(src, 0, answer, 0, ol);
@@ -903,15 +840,16 @@ throw new IOException (ex);
             answer[ol + 4] = KDF_LO;
             answer[ol + 5] = AEAD_HI;
             answer[ol + 6] = AEAD_LO;
-            answer[ol+7] = 0x0; // config id
-            answer[ol+8] = 0x0; // config id
+            answer[ol+7] = cfgid; // config id
+            answer[ol+8] = 0x0; // length id
             answer[ol+9] = 0x20; // length mypub
-            System.arraycopy(mypub, 0, answer, ol+9, 32);
-            answer[ol+40] = (byte)(cipherlen/256);
-            answer[ol+41] = (byte)(cipherlen%256);
+            System.arraycopy(mypub, 0, answer, ol+10, 32);
+            answer[ol+42] = (byte)(cipherlen/256);
+            answer[ol+43] = (byte)(cipherlen%256);
             for (int i = 0; i < cipherlen; i++) {
                 answer[ol+will_add+i] = 0x0;
             }
+            System.err.println("expanded into size = "+answer.length);
             return answer;
         }
        

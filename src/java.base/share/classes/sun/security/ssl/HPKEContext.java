@@ -25,7 +25,6 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyAgreement;
-import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
@@ -221,8 +220,6 @@ public class HPKEContext {
             System.err.println("Labeledexpand, linfosize = " + labeled_info.length + " content = " + Arrays.toString(labeled_info));
             HKDF hkdf = new HKDF("SHA256");
             return hkdf.expand(new SecretKeySpec(prk, "HmacSHA256"), labeled_info, l, "HPKE").getEncoded();
-
-        //    return expand(prk, labeled_info, l);
         } catch (Exception ex) {
             throw new IOException(ex);
         }

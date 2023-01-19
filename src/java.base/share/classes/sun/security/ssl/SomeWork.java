@@ -308,7 +308,7 @@ if (salt.length >0) {
         byte[] c = new byte[al + bl];
         System.arraycopy(a, 0, c, 0, al);
         System.arraycopy(b, 0, c, al, bl);
-        System.err.println("contact "+Arrays.toString(a)+" and "+Arrays.toString(b)+" and return " + Arrays.toString(c));
+        System.err.println("nocontact "+Arrays.toString(a)+" and "+Arrays.toString(b)+" and return " + Arrays.toString(c));
         return c;        
     }
     
