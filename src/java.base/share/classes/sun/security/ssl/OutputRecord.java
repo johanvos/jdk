@@ -83,7 +83,6 @@ abstract class OutputRecord
         {SSLHandshake.KEY_UPDATE.id, 0x00, 0x00, 0x01, 0x00};
 
     OutputRecord(HandshakeHash handshakeHash, SSLWriteCipher writeCipher) {
-        Thread.dumpStack();
         System.err.println("OUTPUTRECORD CREATED with writer "+writeCipher);
         this.writeCipher = writeCipher;
         this.firstMessage = true;

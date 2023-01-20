@@ -50,7 +50,6 @@ public class KAKeyDerivation implements SSLKeyDerivation {
             PrivateKey localPrivateKey,
             PublicKey peerPublicKey) {
         System.err.println("CCCCCCreate a keyDerivation for alg = " + algorithmName+" and sk = " + localPrivateKey+" and pk = " + peerPublicKey+" of class "+peerPublicKey.getClass());
-     Thread.dumpStack();
         this.algorithmName = algorithmName;
         this.context = context;
         this.localPrivateKey = localPrivateKey;
@@ -73,8 +72,6 @@ public class KAKeyDerivation implements SSLKeyDerivation {
     private SecretKey t12DeriveKey(String algorithm,
             AlgorithmParameterSpec params) throws IOException {
         try {
-System.err.println("LLLLLLL");
-Thread.dumpStack();
             KeyAgreement ka = KeyAgreement.getInstance(algorithmName);
             ka.init(localPrivateKey);
             ka.doPhase(peerPublicKey, true);
@@ -103,8 +100,6 @@ Thread.dumpStack();
     private SecretKey t13DeriveKey(String algorithm,
             AlgorithmParameterSpec params) throws IOException {
         try {
-System.err.println("LLLLLLL");
-Thread.dumpStack();
             KeyAgreement ka = KeyAgreement.getInstance(algorithmName);
             ka.init(localPrivateKey);
             ka.doPhase(peerPublicKey, true);

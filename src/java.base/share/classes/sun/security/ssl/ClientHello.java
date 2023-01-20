@@ -57,6 +57,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.net.ssl.ECHConfig;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLPeerUnverifiedException;
@@ -358,10 +359,10 @@ final class ClientHello {
             hos.putBytes8(compressionMethod);
         }
 
-        public byte[] toByteArray() throws IOException {
+        public byte[] toByteArray(boolean inner) throws IOException {
             byte[] hb = getHeaderBytes();
             HandshakeOutStream hos = new HandshakeOutStream(null);
-            this.extensions.send(hos);
+            this.extensions.send(hos, inner);
             byte[] eb = hos.toByteArray();
             byte[] answer = new byte[hb.length+ eb.length];
             System.arraycopy(hb, 0, answer, 0, hb.length);
@@ -459,7 +460,8 @@ final class ClientHello {
             byte[] echConfigBytes = Files.readAllBytes(Path.of("/tmp/ech.conf"));
             this.echConfig = new ECHConfig(echConfigBytes);
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
-
+            chc.setEchConfig(echConfig);
+            SSLLogger.info("Got ECHconfig, pubname = "+echConfig.getPublicName());
             // clean up this producer
             chc.handshakeProducers.remove(SSLHandshake.CLIENT_HELLO.id);
 
@@ -700,12 +702,13 @@ final class ClientHello {
             // Produce extensions for ClientHello handshake message.
             SSLExtension[] extTypes = chc.sslConfig.getEnabledExtensions(
                     SSLHandshake.CLIENT_HELLO, chc.activeProtocols);
-SSLLogger.fine("Now produce extensions", chc);
+            SSLLogger.fine("Produce extensions for outer CH", chc);
             chm.extensions.produce(chc, extTypes);
-            for (SSLExtension ext: extTypes) {
-            }
+
+            SSLLogger.fine("Produce extensions for inner CH", chc);
+
             innerChm.extensions.produce(chc, extTypes);
-            byte[] innerBytes = innerChm.toByteArray();
+            byte[] innerBytes = innerChm.toByteArray(true);
             int cl = innerBytes.length;
             byte[] innerCh = new byte[cl+4];
             System.arraycopy(innerBytes, 0, innerCh, 4, cl);
@@ -728,8 +731,10 @@ SSLLogger.fine("Now produce extensions", chc);
 
             SSLLogger.info("selected version: " + echConfig.getVersion() + ", configid = " + echConfig.getConfigId());
             SSLLogger.info("peer pub: ", echConfig.getPublicKey());
-int clearLen = calculateClearLength(clear.length, echConfig.getMaxNameLength());
-
+            int clearLen = calculateClearLength(clear.length, echConfig.getMaxNameLength());
+            byte[] newclear = new byte[clearLen];
+            System.arraycopy(clear, 0, newclear, 0, clear.length);
+            clear = newclear;
             byte[] info = makeInfo();
             SSLLogger.info("info", info);
             System.err.println("CREATING HPKECONTEXT");
@@ -742,15 +747,16 @@ int clearLen = calculateClearLength(clear.length, echConfig.getMaxNameLength());
             hpkeContext.create();
             System.err.println("CREATED HPKECONTEXT");
             
-            byte[] pkt = chm.toByteArray();
+            byte[] pkt = chm.toByteArray(false);
             SSLLogger.info("pkt0 ("+pkt.length+")", pkt);
             int cipherlen = clearLen + 16; // not valid for all AEAD
             int oldlen = pkt.length;
-            pkt = expandOuterCH(pkt, (byte)this.echConfig.configId, getPubBytes(this.ephemeralPub), cipherlen);
+            
+            pkt = expandOuterCH(pkt, (byte)this.echConfig.getConfigId(), getPubBytes(this.ephemeralPub), cipherlen);
             SSLLogger.info("pkt ("+pkt.length+")", pkt);
             byte[] aad = new byte[pkt.length - 4];
             int cipherStart = aad.length - cipherlen;
-            System.err.println("pktlen = "+pkt.length+", aadlen = "+aad.length+", cipherlen = "+cipherlen);
+            System.err.println("Pktlen = "+pkt.length+", aadlen = "+aad.length+", cipherlen = "+cipherlen);
             System.arraycopy(pkt,4, aad,0, aad.length);
           // add first 
             byte[] cipher = hpkeContext.seal(aad, clear);

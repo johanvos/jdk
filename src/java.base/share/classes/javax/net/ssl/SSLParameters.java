@@ -332,7 +332,6 @@ public class SSLParameters {
      */
     public final void setServerNames(List<SNIServerName> serverNames) {
         System.err.println("[JVDBG] setServernames");
-        Thread.dumpStack();
         if (this.sniNames == serverNames) {
             return;
         }
@@ -956,6 +955,5 @@ public class SSLParameters {
     public void setEchConfig(ECHConfig v) {
         this.echConfig = v;
         System.err.println("PUBLICNAME == " + v.getPublicName()+" set on "+this);
-        Thread.dumpStack();
     }
 }

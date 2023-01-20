@@ -101,9 +101,10 @@ public class ECHConfig {
     public byte[] getPublicKey() {
         return this.publicKey;
     }
-    
+
     /**
-     * Return the name we can use in the outer ClientHello
+     * Return the name we can use in the outer ClientHello.
+     *
      * @return the public name
      */
     public String getPublicName() {

@@ -178,7 +178,6 @@ final class SSLConfiguration implements Cloneable {
     SSLParameters getSSLParameters() {
         SSLParameters params = new SSLParameters();
         System.err.println("[JVDBG] getSSLParameters");
-        Thread.dumpStack();
         params.setAlgorithmConstraints(this.userSpecifiedAlgorithmConstraints);
         params.setProtocols(ProtocolVersion.toStringArray(enabledProtocols));
         params.setCipherSuites(CipherSuite.namesOf(enabledCipherSuites));

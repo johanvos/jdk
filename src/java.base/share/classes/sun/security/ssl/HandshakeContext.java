@@ -34,6 +34,7 @@ import java.security.CryptoPrimitive;
 import java.util.*;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import javax.crypto.SecretKey;
+import javax.net.ssl.ECHConfig;
 import javax.net.ssl.SNIServerName;
 import javax.net.ssl.SSLHandshakeException;
 import javax.security.auth.x500.X500Principal;
@@ -68,6 +69,7 @@ abstract class HandshakeContext implements ConnectionContext {
     final SSLContextImpl                    sslContext;
     final TransportContext                  conContext;
     final SSLConfiguration                  sslConfig;
+    ECHConfig                               echConfig;
 
     // consolidated parameters
     final List<ProtocolVersion>             activeProtocols;
@@ -152,6 +154,7 @@ abstract class HandshakeContext implements ConnectionContext {
 
     protected HandshakeContext(SSLContextImpl sslContext,
             TransportContext conContext) throws IOException {
+        Thread.dumpStack();
         this.sslContext = sslContext;
         this.conContext = conContext;
         this.sslConfig = (SSLConfiguration)conContext.sslConfig.clone();
@@ -289,14 +292,14 @@ abstract class HandshakeContext implements ConnectionContext {
                     }
                 } else if (SSLLogger.isOn && SSLLogger.isOn("verbose")) {
                     SSLLogger.fine(
-                        "Ignore unsupported cipher suite: " + suite +
+                        "Ignore Unsupported cipher suite: " + suite +
                              " for " + protocol.name);
                 }
             }
 
             if (!found && (SSLLogger.isOn) && SSLLogger.isOn("handshake")) {
                 SSLLogger.fine(
-                    "No available cipher suite for " + protocol.name);
+                    "No Available Cipher suite for " + protocol.name);
             }
         }
 
@@ -354,6 +357,14 @@ abstract class HandshakeContext implements ConnectionContext {
  
     boolean isInnerEch() {
         return innerEch;
+    }
+    
+    void setEchConfig(ECHConfig ec) {
+        this.echConfig = ec;
+    }
+    
+    ECHConfig getEchConfig() {
+        return this.echConfig;
     }
 
     /**

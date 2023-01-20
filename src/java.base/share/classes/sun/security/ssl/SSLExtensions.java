@@ -341,9 +341,12 @@ SSLLogger.fine("[JV] processed extension " + extension+", added " + encoded.leng
         }
     }
 
+    void send(HandshakeOutStream hos) throws IOException {
+        send(hos, false);
+    }
     // Note that TLS 1.3 may use empty extensions.  Please consider it while
     // using this method.
-    void send(HandshakeOutStream hos) throws IOException {
+    void send(HandshakeOutStream hos, boolean inner) throws IOException {
         int extsLen = length();
         if (extsLen == 0) {
             return;
@@ -351,7 +354,7 @@ SSLLogger.fine("[JV] processed extension " + extension+", added " + encoded.leng
         hos.putInt16(extsLen - 2);
         // extensions must be sent in the order they appear in the enum
         for (SSLExtension ext : SSLExtension.values()) {
-            byte[] extData = extMap.get(ext);
+            byte[] extData = inner? compressedMap.get(ext) : extMap.get(ext);
             if (extData != null) {
                 hos.putInt16(ext.id);
                 hos.putBytes16(extData);

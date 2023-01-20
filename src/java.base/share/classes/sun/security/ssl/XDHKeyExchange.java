@@ -118,7 +118,6 @@ final class XDHKeyExchange {
         @Override
         public byte[] encode() {
             System.err.println("JJJJJJJ");
-Thread.dumpStack();
             byte[] uBytes = ECUtil.trimZeroes(publicKey.getU().toByteArray());
 
             int expLength;

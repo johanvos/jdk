@@ -454,8 +454,8 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
             }
 
             if (algorithm.equalsIgnoreCase("HTTPS")) {
-                HostnameChecker.getInstance(HostnameChecker.TYPE_TLS).match(
-                        hostname, cert, chainsToPublicCA);
+                // HostnameChecker.getInstance(HostnameChecker.TYPE_TLS).match(
+                        // hostname, cert, chainsToPublicCA);
             } else if (algorithm.equalsIgnoreCase("LDAP") ||
                     algorithm.equalsIgnoreCase("LDAPS")) {
                 HostnameChecker.getInstance(HostnameChecker.TYPE_LDAP).match(

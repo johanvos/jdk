@@ -82,7 +82,6 @@ final class EchExtension {
         public byte[] produce(ConnectionContext context,
                 HandshakeMessage message) throws IOException {
 System.err.println("[ECH] produce ECH for inner ClientHello");
-Thread.dumpStack();
             // The producing happens in client side only.
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
 
