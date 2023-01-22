@@ -161,8 +161,10 @@ abstract class HandshakeContext implements ConnectionContext {
 
         this.algorithmConstraints = SSLAlgorithmConstraints.wrap(
                 sslConfig.userSpecifiedAlgorithmConstraints);
-        this.activeProtocols =
-                getActiveProtocols(sslConfig, algorithmConstraints);
+        // this.activeProtocols = 
+           //     getActiveProtocols(sslConfig, algorithmConstraints);
+        // HACK
+           this.activeProtocols= List.of(ProtocolVersion.TLS13);
         if (activeProtocols.isEmpty()) {
             throw new SSLHandshakeException(
                 "No appropriate protocol (protocol is disabled or " +
@@ -265,6 +267,7 @@ abstract class HandshakeContext implements ConnectionContext {
         boolean enabledSSL20Hello = false;
         ArrayList<ProtocolVersion> protocols = new ArrayList<>(4);
         for (ProtocolVersion protocol : sslConfig.enabledProtocols) {
+            System.err.println("Consider protocol "+protocol);
             if (!enabledSSL20Hello && protocol == ProtocolVersion.SSL20Hello) {
                 enabledSSL20Hello = true;
                 continue;
@@ -284,8 +287,9 @@ abstract class HandshakeContext implements ConnectionContext {
                 if (suite.isAvailable() && suite.supports(protocol)) {
                     if (isActivatable(sslConfig, suite,
                             algorithmConstraints, cachedStatus)
-                            && protocol.useTLS13PlusSpec()
+                        //    && protocol.useTLS13PlusSpec()
                             ) {
+                        System.err.println("consider suite "+suite+" of class "+suite.getClass()+" for protocol "+protocol);
                         protocols.add(protocol);
                         found = true;
                         break;

@@ -107,14 +107,16 @@ final class ClientHello {
         final List<CipherSuite>     cipherSuites;   // known cipher suites only
         final byte[]                compressionMethod;
         final SSLExtensions         extensions;
+        final boolean inner;
 
         private static final byte[]  NULL_COMPRESSION = new byte[] {0};
 
         ClientHelloMessage(HandshakeContext handshakeContext,
                 int clientVersion, SessionId sessionId,
-                List<CipherSuite> cipherSuites, SecureRandom generator) {
+                List<CipherSuite> cipherSuites, SecureRandom generator, boolean inner) {
             super(handshakeContext);
             this.isDTLS = handshakeContext.sslContext.isDTLS();
+            this.inner = inner;
 
             this.clientVersion = clientVersion;
             this.clientRandom = new RandomCookie(generator);
@@ -188,6 +190,7 @@ final class ClientHello {
         ClientHelloMessage(HandshakeContext handshakeContext, ByteBuffer m,
                 SSLExtension[] supportedExtensions) throws IOException {
             super(handshakeContext);
+            this.inner = false;
             this.isDTLS = handshakeContext.sslContext.isDTLS();
 
             this.clientVersion = ((m.get() & 0xFF) << 8) | (m.get() & 0xFF);
@@ -359,7 +362,7 @@ final class ClientHello {
             hos.putBytes8(compressionMethod);
         }
 
-        public byte[] toByteArray(boolean inner) throws IOException {
+        public byte[] toByteArray() throws IOException {
             byte[] hb = getHeaderBytes();
             HandshakeOutStream hos = new HandshakeOutStream(null);
             this.extensions.send(hos, inner);
@@ -368,6 +371,25 @@ final class ClientHello {
             System.arraycopy(hb, 0, answer, 0, hb.length);
             System.arraycopy(eb, 0, answer, hb.length, eb.length);
             return answer;
+        }
+
+        byte[] getInnerClientHello() throws IOException {
+            byte[] normalBytes = toByteArray();
+            int cl = normalBytes.length;
+            byte[] innerCh = new byte[cl + 4];
+            System.arraycopy(normalBytes, 0, innerCh, 4, cl);
+            innerCh[0] = 0x1;
+            int clw = cl;
+            innerCh[3] = (byte) (clw % 256);
+            clw = clw / 256;
+            innerCh[2] = (byte) (clw % 256);
+            innerCh[1] = (byte) (clw / 256);
+            SSLLogger.info("inner CH (" + (cl + 4) + "): ", innerCh);
+            byte[] crb = clientRandom.randomBytes;
+            SSLLogger.info("inner, client_random (" + crb.length + ")", crb);
+            byte[] isid = sessionId.getId();
+            SSLLogger.info("inner, session_id (" + isid.length + ")", isid);
+            return innerCh;
         }
 
         public byte[] getEncodedByteArray() throws IOException {
@@ -469,9 +491,12 @@ final class ClientHello {
             SessionId sessionId = new SessionId(new byte[0]);
 
             // a list of cipher suites sent by the client
-            List<CipherSuite> cipherSuites = chc.activeCipherSuites;
+            List<CipherSuite> candidateSuites = chc.activeCipherSuites;
+            List<CipherSuite> cipherSuites = new ArrayList<>();
+            cipherSuites.addAll(candidateSuites);
 
-            //
+            System.err.println("[CH] step 1, cipherSuites = "+cipherSuites);
+            cipherSuites.add(CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV);
             // Try to resume an existing session.
             //
             SSLSessionContextImpl ssci = (SSLSessionContextImpl)
@@ -646,6 +671,7 @@ final class ClientHello {
             for (ProtocolVersion pv : chc.activeProtocols) {
                 if (minimumVersion == ProtocolVersion.NONE ||
                         pv.compare(minimumVersion) < 0) {
+                    System.err.println("[CH] minimumversion was "+minimumVersion+" and will be "+pv);
                     minimumVersion = pv;
                 }
             }
@@ -689,11 +715,11 @@ final class ClientHello {
 
             ClientHelloMessage chm = new ClientHelloMessage(chc,
                     clientHelloVersion.id, sessionId, cipherSuites,
-                    chc.sslContext.getSecureRandom());
+                    chc.sslContext.getSecureRandom(), false);
 
             ClientHelloMessage innerChm = new ClientHelloMessage(chc,
                     clientHelloVersion.id, sessionId, cipherSuites,
-                    chc.sslContext.getSecureRandom());
+                    chc.sslContext.getSecureRandom(), true);
 
             // cache the client random number for further using
             chc.clientHelloRandom = chm.clientRandom;
@@ -708,7 +734,7 @@ final class ClientHello {
             SSLLogger.fine("Produce extensions for inner CH", chc);
 
             innerChm.extensions.produce(chc, extTypes);
-            byte[] innerBytes = innerChm.toByteArray(true);
+            byte[] innerBytes = innerChm.toByteArray();
             int cl = innerBytes.length;
             byte[] innerCh = new byte[cl+4];
             System.arraycopy(innerBytes, 0, innerCh, 4, cl);
@@ -724,7 +750,7 @@ final class ClientHello {
             byte[] isid = innerChm.sessionId.getId();
             SSLLogger.info("inner, session_id (" + isid.length + ")", isid);
             byte[] clear = innerChm.getEncodedByteArray();
-            SSLLogger.info("encoded inner CH ", clear);
+            SSLLogger.info("encoded inner CH ("+clear.length+")", clear);
 
             SSLLogger.info("outer, client_random (" + crb.length + ")", chm.clientRandom.randomBytes);
             SSLLogger.info("outer, session_id", chm.sessionId.getId());
@@ -737,7 +763,6 @@ final class ClientHello {
             clear = newclear;
             byte[] info = makeInfo();
             SSLLogger.info("info", info);
-            System.err.println("CREATING HPKECONTEXT");
 
             PublicKey peerPub = HPKEContext.convertEncodedPublicKey(echConfig.getPublicKey());
             KeyPair ephemeral = HPKEContext.deriveKeyPair(null);
@@ -745,10 +770,8 @@ final class ClientHello {
             SSLLogger.info("mypublickey", ephemeralPub);
             HPKEContext hpkeContext = new HPKEContext(peerPub,ephemeral, info);
             hpkeContext.create();
-            System.err.println("CREATED HPKECONTEXT");
             
-            byte[] pkt = chm.toByteArray(false);
-            SSLLogger.info("pkt0 ("+pkt.length+")", pkt);
+            byte[] pkt = chm.toByteArray();
             int cipherlen = clearLen + 16; // not valid for all AEAD
             int oldlen = pkt.length;
             
@@ -768,7 +791,8 @@ final class ClientHello {
             byte[] newCH = new byte[pkt.length - oldlen+1];
             System.err.println("AADlen = " + aad.length+", newCH len = "+newCH.length+", cipherlen = " + cipherlen+", clearLen = "+clearLen);
             System.arraycopy(aad, oldlen-5, newCH, 0, newCH.length);
-          //  System.arraycopy(cipher, 0, pkt, cipherStart, cipher.length);
+
+            //  System.arraycopy(cipher, 0, pkt, cipherStart, cipher.length);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ClientHello handshake message", chm);
             }

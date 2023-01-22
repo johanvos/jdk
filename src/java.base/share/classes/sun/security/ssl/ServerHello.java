@@ -30,10 +30,13 @@ import java.nio.ByteBuffer;
 import java.security.AlgorithmConstraints;
 import java.security.CryptoPrimitive;
 import java.security.GeneralSecurityException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.text.MessageFormat;
 import java.util.*;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLProtocolException;
@@ -879,13 +882,16 @@ final class ServerHello {
             }
 
             ServerHelloMessage shm = new ServerHelloMessage(chc, message);
+            SSLLogger.info("Processing ServerHelloMessage", shm);
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Consuming ServerHello handshake message", shm);
             }
 
             if (shm.serverRandom.isHelloRetryRequest()) {
+                System.err.println("[JVDBG] HELLORETRYREQUEST!");
                 onHelloRetryRequest(chc, shm);
             } else {
+                System.err.println("[JVDBG] SERVERHELLO!");
                 onServerHello(chc, shm);
             }
         }
@@ -942,8 +948,59 @@ final class ServerHello {
             }
         }
 
+        private void checkECHAcceptance(ClientHandshakeContext chc,
+                ServerHelloMessage serverHello) throws IOException {
+            ClientHelloMessage chm = chc.initialClientHelloMsg;
+            byte[] chmb = chm.toByteArray();
+            HandshakeOutStream hos = new HandshakeOutStream(null);
+            serverHello.send(hos);
+            byte[] sb = hos.toByteArray();
+            byte[] tbuf = new byte[chmb.length+sb.length];
+            System.arraycopy(chmb, 0, tbuf, 0, chmb.length);
+            System.arraycopy(sb, 0, tbuf, chmb.length, sb.length);
+            SSLLogger.info("tbuf ("+tbuf.length+")", tbuf);
+            // last 8 bytes of server.random should be 0
+            byte[] serverRandom = new byte[8];
+            System.arraycopy(sb, 26, serverRandom, 0, 8);
+            for (int i = 0; i < 8; i++) tbuf[chmb.length+26+i] = 0;
+            SSLLogger.info("calc conf : tbuf ("+tbuf.length+")", tbuf);
+            byte[] label = "ech accept confirmation".getBytes();
+            SSLLogger.info("calc conf : label ("+label.length+")", label);
+            HandshakeHash hsh = chc.handshakeHash.copy();
+            hsh.deliver(tbuf);
+            hsh.finish();
+            byte[] hashVal = hsh.digest();
+            int hashLen = hashVal.length;
+            SSLLogger.info("calc conf : hashval ("+hashVal.length+")", hashVal);
+            try {
+                HKDF hkdf = new HKDF("SHA256");
+                byte[] rnd = chm.clientRandom.randomBytes;
+                SSLLogger.info("just to make sure, this is clientrandom? ", rnd);
+                byte[] zeros = new byte[hashLen];
+                SecretKey zeroKey = new SecretKeySpec(zeros, "SALT");
+                SecretKey inputKey = new SecretKeySpec(rnd, "input");
+                SecretKey notsecret = hkdf.extract(zeroKey, inputKey, "hdkf");
+                SSLLogger.info("calc conf : notsecret ("+notsecret.getEncoded().length+")", notsecret.getEncoded());
+                HKDF hkdf2 = new HKDF("SHA256");
+                byte[] mi = new byte[hashLen+8 + label.length];
+                mi[0] = 0;
+                mi[1] = 8;
+                System.arraycopy("tls13 ".getBytes(), 0, mi, 2, 6);
+                System.arraycopy(label, 0, mi, 8, label.length);
+                System.arraycopy(hashVal, 0, mi, label.length+8, hashLen);
+                SecretKey info = new SecretKeySpec(mi, "info");
+                SecretKey secretKey = hkdf2.expand(notsecret, mi, 8, "hkdf");
+                byte[] secret = secretKey.getEncoded();
+                SSLLogger.info("calc conf : result: ", secret);
+                SSLLogger.info("Compare with original: ", serverRandom);
+            } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
+                throw new IOException (ex);
+            } 
+
+        }
         private void onServerHello(ClientHandshakeContext chc,
                 ServerHelloMessage serverHello) throws IOException {
+            checkECHAcceptance(chc, serverHello);
             // Negotiate protocol version.
             //
             // Check and launch SupportedVersions.

@@ -287,6 +287,7 @@ public abstract class SSLContextImpl extends SSLContextSpi {
 
     // Get default protocols.
     List<ProtocolVersion> getDefaultProtocolVersions(boolean roleIsServer) {
+        System.err.println("GetDefaultPV, this = "+this+" of class "+ this.getClass());
         return roleIsServer ? getServerDefaultProtocolVersions()
                             : getClientDefaultProtocolVersions();
     }

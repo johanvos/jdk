@@ -254,6 +254,7 @@ final class KeyShareExtension {
             byte[] keyExchangeData;
             for (NamedGroup ng : namedGroups) {
                 if (!ngTypes.contains(ng.spec)) {
+                    System.err.println("KEYSHARE, consider "+ng);
                     if ((keyExchangeData = getShare(chc, ng)) != null) {
                         keyShares.add(new KeyShareEntry(ng.id,
                                 keyExchangeData));
