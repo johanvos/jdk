@@ -144,6 +144,7 @@ public class TestHkdf {
                 testsPassed++;
             }
         }
+        testTls13HkdfExtract();
         testTls13HkdfExpand();
         testTls13HkdfExpandDetailed();
 
@@ -261,6 +262,28 @@ public class TestHkdf {
     }
 
  
+    static void testTls13HkdfExtract() {
+        boolean works = false;
+        try {
+            String rndString = "a7:55:cd:38:d4:7f:22:0b:40:0b:6d:b0:5d:3c:e8:7b:15:39:8a:6b:76:6f:49:bc:88:f4:b3:d5:ca:e5:c5:ef:";
+            byte[] rndBytes = fromHexString(rndString);
+            String out = "39:5d:8d:17:36:bc:00:c9:e2:24:a6:09:46:03:23:e1:"
+                    +"fb:5b:1e:f9:5e:ae:0c:c5:e7:39:df:96:e8:14:48:d2:"
+                    +"c4:1c:ad:cf:ff:ad:1f:02:95:12:e2:12:5f:7f:09:83:";
+            byte[] outBytes = fromHexString(out);
+            SecretKey inputKey = new SecretKeySpec(rndBytes, "KDF-PRK");
+            byte[] salt = new byte[48];
+            HKDF hkdf = new HKDF("SHA-384");
+            SecretKey extract = hkdf.extract(salt, inputKey, "KDF-OKM");
+            works = Arrays.equals(outBytes, extract.getEncoded());
+        } catch (Exception e) {
+            throw new RuntimeException ("HKDF Extract failed due to ", e);
+        }
+        if (!works) {
+            throw new RuntimeException ("HKDF Extract failed!");
+        }
+    }
+
     static void testTls13HkdfExpand() {
         try {
         String secretString = "8b:88:f3:95:00:a8:0f:8a:52:03:b9:f0:07:a2:76:70:"
