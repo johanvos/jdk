@@ -27,11 +27,11 @@ package sun.security.ssl;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
+import java.util.*;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.ShortBufferException;
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Objects;
 
 /**
  * An implementation of the HKDF key derivation algorithm outlined in RFC 5869,
@@ -180,6 +180,35 @@ final class HKDF {
         }
 
         return new SecretKeySpec(kdfOutput, 0, outLen, keyAlg);
+    }
+    
+    /**
+     * Expand a key using the HDKF-Expand-Label function defined in RFC 8446, 7.1.
+     * https://www.rfc-editor.org/rfc/rfc8446#section-7.1
+     * 
+     * @param pseudoRandKey
+     * @param label
+     * @param data
+     * @param outLen
+     * @param keyAlg
+     * @return
+     * @throws InvalidKeyException 
+     */
+    SecretKey tls13Expand(SecretKey pseudoRandKey, byte[] label, byte[] data, int outLen,
+            String keyAlg) throws InvalidKeyException {
+        byte[] prefixLabel = "tls13 ".getBytes();
+        byte[] realLabel = new byte[4 + prefixLabel.length + label.length + data.length];
+        realLabel[0] = 0;
+        realLabel[1] = 8;
+        realLabel[2] = (byte) (label.length + prefixLabel.length);
+        System.arraycopy(prefixLabel, 0, realLabel, 3, prefixLabel.length);
+        System.arraycopy(label, 0, realLabel, 3 + prefixLabel.length, label.length);
+        int idx = 3 + label.length + prefixLabel.length;
+        realLabel[idx] = (byte) data.length;
+        idx++;
+        System.arraycopy(data, 0, realLabel, idx, data.length);
+        SecretKey res = expand(pseudoRandKey, realLabel, 8, "SHA2-384");
+        return res;
     }
 }
 

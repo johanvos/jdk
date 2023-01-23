@@ -144,6 +144,8 @@ public class TestHkdf {
                 testsPassed++;
             }
         }
+        testTls13HkdfExpand();
+        testTls13HkdfExpandDetailed();
 
         System.out.println("Total tests: " + testList.size() +
                 ", Passed: " + testsPassed + ", Failed: " +
@@ -256,5 +258,90 @@ public class TestHkdf {
                     Character.digit(hex.charAt(i + 1), 16));
         }
         return data;
+    }
+
+ 
+    static void testTls13HkdfExpand() {
+        try {
+        String secretString = "8b:88:f3:95:00:a8:0f:8a:52:03:b9:f0:07:a2:76:70:"
+                + "19:07:44:1c:91:93:ad:84:d0:c3:40:b2:91:0e:5b:ba:"
+                + "7f:7c:fc:25:82:03:b7:3e:c0:31:d9:d1:e6:9b:86:2f:";
+        byte[] secret = fromHexString(secretString);
+        String labelString = "65:63:68:20:61:63:63:65:70:74:20:63:6f:6e:66:69:"
+                + "72:6d:61:74:69:6f:6e:";
+        byte[] label = fromHexString(labelString);
+        String dataString = "7d:3e:80:04:f8:d8:af:34:f2:f2:b2:c9:9b:d2:ba:65:"
+                + "f2:73:1a:06:0e:87:6f:21:c0:54:fb:43:8b:5a:38:4c:"
+                + "34:ae:76:1f:b4:8f:1a:44:ef:ea:9a:73:89:9b:58:18:";
+        byte[] data = fromHexString(dataString);
+        String outString = "42:0e:89:95:ed:0b:01:92:";
+        byte[] out = fromHexString(outString);
+        int outlen = out.length;
+        SecretKey prk = new SecretKeySpec(secret, "prk");
+        HKDF hkdf = new HKDF("SHA-384");
+        SecretKey res = hkdf.tls13Expand(prk, label, data, outlen, "HKDF-OKM");
+     
+        boolean works = Arrays.equals(out, res.getEncoded());
+        if (!works) {
+            throw new RuntimeException ("tsl13-hkdf test failed");
+        }
+        }
+        catch (Exception e) {
+            throw new RuntimeException ("tsl13-hkdf test failed due to internal exception:", e);
+        }
+    }
+
+    static void testTls13HkdfExpandDetailed() {
+        try {
+        String secretString = "8b:88:f3:95:00:a8:0f:8a:52:03:b9:f0:07:a2:76:70:"
+                + "19:07:44:1c:91:93:ad:84:d0:c3:40:b2:91:0e:5b:ba:"
+                + "7f:7c:fc:25:82:03:b7:3e:c0:31:d9:d1:e6:9b:86:2f:";
+        byte[] secret = fromHexString(secretString);
+        String labelString = "65:63:68:20:61:63:63:65:70:74:20:63:6f:6e:66:69:"
+                + "72:6d:61:74:69:6f:6e:";
+        byte[] label = fromHexString(labelString);
+        String dataString = "7d:3e:80:04:f8:d8:af:34:f2:f2:b2:c9:9b:d2:ba:65:"
+                + "f2:73:1a:06:0e:87:6f:21:c0:54:fb:43:8b:5a:38:4c:"
+                + "34:ae:76:1f:b4:8f:1a:44:ef:ea:9a:73:89:9b:58:18:";
+        byte[] data = fromHexString(dataString);
+        String outString = "42:0e:89:95:ed:0b:01:92:";
+        byte[] out = fromHexString(outString);
+        int outlen = out.length;
+        HKDF hkdf = new HKDF("SHA-384");
+        byte[] prefixLabel = "tls13 ".getBytes();
+        byte[] realLabel = new byte[4 + prefixLabel.length+label.length + data.length];
+        realLabel[0] = 0;
+        realLabel[1] = 8;
+        realLabel[2] = (byte)(label.length+prefixLabel.length);
+        System.arraycopy(prefixLabel, 0, realLabel, 3, prefixLabel.length);
+        System.arraycopy(label, 0, realLabel, 3+prefixLabel.length, label.length);
+        int idx = 3 + label.length+prefixLabel.length;
+        realLabel[idx] = (byte)data.length;
+        idx++;
+        System.arraycopy(data, 0, realLabel, idx, data.length);
+        SecretKey prk = new SecretKeySpec(secret, "prk");
+        SecretKey res = hkdf.expand(prk, realLabel, outlen, "HKDF-OKM");
+     
+        boolean works = Arrays.equals(out, res.getEncoded());
+        if (!works) {
+            throw new RuntimeException ("tsl13-hkdf test failed");
+        }
+        }
+        catch (Exception e) {
+            throw new RuntimeException ("tsl13-hkdf test failed due to internal exception:", e);
+        }
+    }
+
+    static byte fromHex(String hx) {
+        return (byte) Long.parseLong(hx, 16);
+    }
+
+    static byte[] fromHexString(String hx) {
+        String[] split = hx.split(":");
+        byte[] answer = new byte[split.length];
+        for (int i = 0; i < split.length; i++) {
+            answer[i] = fromHex(split[i]);
+        }
+        return answer;
     }
 }
