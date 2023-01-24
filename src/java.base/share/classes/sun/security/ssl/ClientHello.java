@@ -27,6 +27,8 @@ package sun.security.ssl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.text.MessageFormat;
@@ -75,13 +77,16 @@ final class ClientHello {
         final List<CipherSuite>     cipherSuites;   // known cipher suites only
         final byte[]                compressionMethod;
         final SSLExtensions         extensions;
+        boolean inner;
 
         private static final byte[]  NULL_COMPRESSION = new byte[] {0};
 
         ClientHelloMessage(HandshakeContext handshakeContext,
                 int clientVersion, SessionId sessionId,
-                List<CipherSuite> cipherSuites, SecureRandom generator) {
+                List<CipherSuite> cipherSuites, SecureRandom generator, boolean inner) {
             super(handshakeContext);
+            this.inner = inner;
+            Thread.dumpStack();
             this.isDTLS = handshakeContext.sslContext.isDTLS();
 
             this.clientVersion = clientVersion;
@@ -95,7 +100,7 @@ final class ClientHello {
 
             this.cipherSuites = cipherSuites;
             this.cipherSuiteIds = getCipherSuiteIds(cipherSuites);
-            this.extensions = new SSLExtensions(this);
+            this.extensions = new SSLExtensions(this, inner);
 
             // Don't support compression.
             this.compressionMethod = NULL_COMPRESSION;
@@ -156,6 +161,7 @@ final class ClientHello {
         ClientHelloMessage(HandshakeContext handshakeContext, ByteBuffer m,
                 SSLExtension[] supportedExtensions) throws IOException {
             super(handshakeContext);
+            Thread.dumpStack();
             this.isDTLS = handshakeContext.sslContext.isDTLS();
 
             this.clientVersion = ((m.get() & 0xFF) << 8) | (m.get() & 0xFF);
@@ -387,6 +393,8 @@ final class ClientHello {
      */
     private static final
             class ClientHelloKickstartProducer implements SSLProducer {
+
+        private ECHConfig echConfig;
         // Prevent instantiation of this class.
         private ClientHelloKickstartProducer() {
             // blank
@@ -397,7 +405,11 @@ final class ClientHello {
         public byte[] produce(ConnectionContext context) throws IOException {
             // The producing happens in client side only.
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
-
+            String innerCh = System.getProperty("ech.hidden");
+            if (innerCh != null) {
+                byte[] echConfigBytes = Files.readAllBytes(Path.of("/tmp/ech.conf"));
+                this.echConfig = new ECHConfig(echConfigBytes);
+            }
             // clean up this producer
             chc.handshakeProducers.remove(SSLHandshake.CLIENT_HELLO.id);
 
@@ -625,8 +637,12 @@ final class ClientHello {
 
             ClientHelloMessage chm = new ClientHelloMessage(chc,
                     clientHelloVersion.id, sessionId, cipherSuites,
-                    chc.sslContext.getSecureRandom());
+                    chc.sslContext.getSecureRandom(), false);
 
+            ClientHelloMessage innerChm = new ClientHelloMessage(chc,
+                    clientHelloVersion.id, sessionId, cipherSuites,
+                    chc.sslContext.getSecureRandom(), true);
+            
             // cache the client random number for further using
             chc.clientHelloRandom = chm.clientRandom;
             chc.clientHelloVersion = clientHelloVersion.id;
@@ -634,12 +650,16 @@ final class ClientHello {
             // Produce extensions for ClientHello handshake message.
             SSLExtension[] extTypes = chc.sslConfig.getEnabledExtensions(
                     SSLHandshake.CLIENT_HELLO, chc.activeProtocols);
+            chc.setEchConfig(echConfig);
             chm.extensions.produce(chc, extTypes);
+            chc.setInnerEch(true);
+            innerChm.extensions.produce(chc, extTypes);
+            chc.setInnerEch(false);
 
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ClientHello handshake message", chm);
             }
-
+chc.innerClientHello = new byte[321];
             // Output the handshake message.
             chm.write(chc.handshakeOutput);
             chc.handshakeOutput.flush();

@@ -120,7 +120,7 @@ final class ServerHello {
         ServerHelloMessage(HandshakeContext context,
                 ByteBuffer m) throws IOException {
             super(context);
-
+            Thread.dumpStack();
             // Reserve for HelloRetryRequest consumer if needed.
             this.handshakeRecord = m.duplicate();
 
@@ -944,6 +944,8 @@ final class ServerHello {
 
         private void onServerHello(ClientHandshakeContext chc,
                 ServerHelloMessage serverHello) throws IOException {
+            // checks if we have an ECH accept confirmation
+            
             // Negotiate protocol version.
             //
             // Check and launch SupportedVersions.

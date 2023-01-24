@@ -496,7 +496,15 @@ enum SSLExtension implements SSLStringizer {
                                 PreSharedKeyExtension.shOnLoadConsumer,
                                 PreSharedKeyExtension.shOnLoadAbsence,
                                 null, null,
-                                PreSharedKeyExtension.shStringizer);
+                                PreSharedKeyExtension.shStringizer),
+    CH_ECH                 (0xfe0d, "encrypted_client_hello",
+                                SSLHandshake.CLIENT_HELLO,
+                                ProtocolVersion.PROTOCOLS_OF_13,
+                                EchExtension.chNetworkProducer,
+                                EchExtension.chOnLoadConsumer,
+                                EchExtension.chOnLoadAbsence,
+                                null, null,
+                                EchExtension.echStringizer);
 
     final int id;
     final SSLHandshake handshakeType;

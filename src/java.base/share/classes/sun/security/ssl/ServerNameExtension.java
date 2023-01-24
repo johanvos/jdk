@@ -228,7 +228,17 @@ final class ServerNameExtension {
                 serverNames =
                         chc.resumingSession.getRequestedServerNames();
             } else {
-                serverNames = chc.sslConfig.serverNames;
+                if (chc.isInnerEch()) {
+                    String ehidden = System.getProperty("ech.hidden");
+                    if (ehidden != null) {
+                        serverNames = List.of(new SNIHostName(ehidden));
+                    } else {
+                        serverNames = chc.sslConfig.serverNames;
+                    }
+                } else {
+                    String hname = chc.getEchConfig().getPublicName();
+                    serverNames = List.of(new SNIHostName(hname));
+                }
             }   // Shall we use host too?
 
             // Empty server name list is not allowed in client mode.

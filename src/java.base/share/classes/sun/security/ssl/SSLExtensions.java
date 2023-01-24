@@ -40,12 +40,19 @@ final class SSLExtensions {
     private final HandshakeMessage handshakeMessage;
     private final Map<SSLExtension, byte[]> extMap = new LinkedHashMap<>();
     private int encodedLength;
+    private boolean inner = false;
 
     // Extension map for debug logging
     private final Map<Integer, byte[]> logMap =
             SSLLogger.isOn ? new LinkedHashMap<>() : null;
 
     SSLExtensions(HandshakeMessage handshakeMessage) {
+        this.handshakeMessage = handshakeMessage;
+        this.encodedLength = 2;         // 2: the length of the extensions.
+    }
+    
+    SSLExtensions(HandshakeMessage handshakeMessage, boolean inner) {
+        this.inner = inner;
         this.handshakeMessage = handshakeMessage;
         this.encodedLength = 2;         // 2: the length of the extensions.
     }

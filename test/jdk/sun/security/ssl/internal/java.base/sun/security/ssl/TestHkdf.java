@@ -28,9 +28,11 @@
 package sun.security.ssl;
 
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Objects;
+import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
 import javax.crypto.SecretKey;
@@ -147,6 +149,7 @@ public class TestHkdf {
         testTls13HkdfExtract();
         testTls13HkdfExpand();
         testTls13HkdfExpandDetailed();
+        test9180A11();
 
         System.out.println("Total tests: " + testList.size() +
                 ", Passed: " + testsPassed + ", Failed: " +
@@ -354,6 +357,29 @@ public class TestHkdf {
             throw new RuntimeException ("tsl13-hkdf test failed due to internal exception:", e);
         }
     }
+
+    static byte[] ikmR = HexFormat.of().parseHex("6db9df30aa07dd42ee5e8181afdb977e538f5e1fec8a06223f33f7013e525037");
+    static byte[] ikme = HexFormat.of().parseHex("7268600d403fce431561aef583ee1613527cff655c1343f29812e66706df3234");
+    static byte[] aad = HexFormat.of().parseHex("436f756e742d30");
+    static byte[] pt = HexFormat.of().parseHex("4265617574792069732074727574682c20747275746820626561757479");
+    static    byte[] info = "Ode on a Grecian Urn".getBytes();
+    static byte[] expectedSeal = HexFormat.of().parseHex("f938558b5d72f1a23810b4be2ab4f84331acc02fc97babc53a52ae8218a355a96d8770ac83d07bea87e13c512a");
+
+    static void test9180A11() {
+        try {
+            KeyPair ephemeralKeyPair = HPKEContext.deriveKeyPair(ikme);
+            KeyPair receiverKeyPair = HPKEContext.deriveKeyPair(ikmR);
+            HPKEContext context = new HPKEContext(receiverKeyPair.getPublic(), ephemeralKeyPair, info);
+            context.create();
+            byte[] seal = context.seal(aad, pt);
+            System.err.println("FINALLY, seal = ");
+            SSLLogger.info("CIPHERSEAL = ",seal);
+            if (!Arrays.equals(seal, expectedSeal)) throw new RuntimeException ("SEAL LENGTH = " + seal.length+" and seal = " + HexFormat.of().formatHex(seal));
+        } catch (Exception ex) {
+            throw new RuntimeException (ex);
+        }
+    }
+
 
     static byte fromHex(String hx) {
         return (byte) Long.parseLong(hx, 16);
