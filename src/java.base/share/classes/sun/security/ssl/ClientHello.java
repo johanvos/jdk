@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyPair;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.text.MessageFormat;
@@ -45,6 +47,9 @@ import sun.security.ssl.SupportedVersionsExtension.CHSupportedVersionsSpec;
  * Pack of the ClientHello handshake message.
  */
 final class ClientHello {
+    static final int OSSL_ECH_PADDING_TARGET = 256;
+    static final int OSSL_ECH_PADDING_INCREMENT = 32;
+
     static final SSLProducer kickstartProducer =
         new ClientHelloKickstartProducer();
     static final SSLConsumer handshakeConsumer =
@@ -331,6 +336,29 @@ final class ClientHello {
             hos.putBytes8(compressionMethod);
         }
 
+        public byte[] toByteArray() throws IOException {
+            byte[] hb = getHeaderBytes();
+            HandshakeOutStream hos = new HandshakeOutStream(null);
+            this.extensions.send(hos);
+            byte[] eb = hos.toByteArray();
+            byte[] answer = new byte[hb.length+ eb.length];
+            System.arraycopy(hb, 0, answer, 0, hb.length);
+            System.arraycopy(eb, 0, answer, hb.length, eb.length);
+            return answer;
+        }
+
+        public byte[] getEncodedByteArray() throws IOException {
+            HandshakeOutStream hos = new HandshakeOutStream(null);
+            hos.putInt8((byte) ((clientVersion >>> 8) & 0xFF)); 
+            hos.putInt8((byte) (clientVersion & 0xFF)); 
+            hos.write(clientRandom.randomBytes, 0, 32); 
+            hos.putInt8(0); // empty session id
+            hos.putBytes16(getEncodedCipherSuites());
+            hos.putBytes8(compressionMethod);
+            this.extensions.send(hos);
+            return hos.toByteArray();
+        }
+
         @Override
         public String toString() {
             MessageFormat messageFormat;
@@ -395,6 +423,7 @@ final class ClientHello {
             class ClientHelloKickstartProducer implements SSLProducer {
 
         private ECHConfig echConfig;
+        private HPKEContext hpkeContext;
         // Prevent instantiation of this class.
         private ClientHelloKickstartProducer() {
             // blank
@@ -409,6 +438,12 @@ final class ClientHello {
             if (innerCh != null) {
                 byte[] echConfigBytes = Files.readAllBytes(Path.of("/tmp/ech.conf"));
                 this.echConfig = new ECHConfig(echConfigBytes);
+                PublicKey peerPub = HPKEContext.convertEncodedPublicKey(echConfig.getPublicKey());
+                KeyPair ephemeral = HPKEContext.deriveKeyPair(null);
+                SSLLogger.info("mypublickey", ephemeral.getPublic());
+                this.hpkeContext = new HPKEContext(peerPub, ephemeral, this.echConfig.createInfo());
+                hpkeContext.create();
+                chc.hpkeContext = hpkeContext;
             }
             // clean up this producer
             chc.handshakeProducers.remove(SSLHandshake.CLIENT_HELLO.id);
@@ -638,10 +673,7 @@ final class ClientHello {
             ClientHelloMessage chm = new ClientHelloMessage(chc,
                     clientHelloVersion.id, sessionId, cipherSuites,
                     chc.sslContext.getSecureRandom(), false);
-
-            ClientHelloMessage innerChm = new ClientHelloMessage(chc,
-                    clientHelloVersion.id, sessionId, cipherSuites,
-                    chc.sslContext.getSecureRandom(), true);
+            chc.initialClientHelloMsg = chm;
             
             // cache the client random number for further using
             chc.clientHelloRandom = chm.clientRandom;
@@ -652,14 +684,46 @@ final class ClientHello {
                     SSLHandshake.CLIENT_HELLO, chc.activeProtocols);
             chc.setEchConfig(echConfig);
             chm.extensions.produce(chc, extTypes);
-            chc.setInnerEch(true);
-            innerChm.extensions.produce(chc, extTypes);
-            chc.setInnerEch(false);
+
 
             if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
                 SSLLogger.fine("Produced ClientHello handshake message", chm);
             }
-chc.innerClientHello = new byte[321];
+
+// ========= inner ECH
+ ClientHelloMessage innerChm = new ClientHelloMessage(chc,
+                    chc.clientHelloVersion, chm.sessionId, chm.cipherSuites,
+                    chc.sslContext.getSecureRandom(), true);
+            chc.setInnerEch(true);
+            innerChm.extensions.produce(chc, extTypes);
+            chc.setInnerEch(false);
+            byte[] clear = innerChm.getEncodedByteArray();
+            int clearLen = calculateClearLength(clear.length, echConfig.getMaxNameLength());
+            byte[] newclear = new byte[clearLen];
+            System.arraycopy(clear, 0, newclear, 0, clear.length);
+            clear = newclear;
+            
+            byte[] pkt = chm.toByteArray();
+            SSLLogger.info("orignal packets (pkt)", pkt);
+            int cipherlen = clearLen + 16; // not valid for all AEAD
+            int oldlen = pkt.length;
+            pkt = expandOuterCH(pkt, (byte)this.echConfig.getConfigId(), hpkeContext.getEphemeralPublicKeyBytes(), cipherlen);
+            SSLLogger.info("pkt ("+pkt.length+")", pkt);
+            byte[] aad = new byte[pkt.length - 4];
+            int cipherStart = aad.length - cipherlen;
+            System.err.println("Pktlen = "+pkt.length+", aadlen = "+aad.length+", cipherlen = "+cipherlen);
+            System.arraycopy(pkt,4, aad,0, aad.length);
+          // add first
+          SSLLogger.info("Before cipher calc, aad = ", aad);
+          SSLLogger.info("Before cipher calc, clear = ", clear);
+            byte[] cipher = hpkeContext.seal(aad, clear);
+            System.arraycopy(cipher, 0, aad, cipherStart, cipherlen);
+byte[] newCH = new byte[pkt.length - oldlen+1];
+System.arraycopy(aad, oldlen-5, newCH, 0, newCH.length);
+chm.extensions.updateExtension(SSLExtension.CH_ECH, newCH);
+chc.innerClientHello = chm.toByteArray();
+
+ // ===========
             // Output the handshake message.
             chm.write(chc.handshakeOutput);
             chc.handshakeOutput.flush();
@@ -681,6 +745,56 @@ chc.innerClientHello = new byte[321];
             // The handshake message has been delivered.
             return null;
         }
+        
+        private int calculateClearLength(int il, int mnl) {
+            if (mnl > 0) {
+                System.err.println("WARNING, ECHCONFIG DEFINED MAXNAMELENGTH! not supported!");
+            }
+            int innersnipadding = 0;
+            int lengthWithSniPadding = innersnipadding + il;
+            int lengthOfPadding = 31 - ((lengthWithSniPadding - 1) % 32);
+            int lengthWithPadding = il + lengthOfPadding + innersnipadding;
+            while (lengthWithPadding < OSSL_ECH_PADDING_TARGET) {
+                lengthWithPadding += OSSL_ECH_PADDING_INCREMENT;
+            }
+            int clearLen = lengthWithPadding;
+            SSLLogger.info("EAAE: Padding: mnl " + echConfig.getMaxNameLength() + ", lws: " + lengthWithSniPadding
+                    + ",lop: " + lengthOfPadding + ", lwp: " + lengthWithPadding
+                    + ", clear_len: " + clearLen + ", orig: " + il);
+
+            return clearLen;
+        }
+        private byte[] expandOuterCH(byte[] src,byte cfgid, byte[] mypub, int cipherlen) {
+            System.err.println("expand, src size = " + src.length+", cipherlen = "+cipherlen);
+            byte KDF_HI = 0x0; //should come from EchConfig
+            byte KDF_LO = 0x1;
+            byte AEAD_HI = 0x0;
+            byte AEAD_LO = 0x1;
+            int ol = src.length-3; // remove encrypted_client_hello length + 00
+            int will_add = 44;
+            int ef0dlength=1 + 4 + 1 + 2 + mypub.length+2+cipherlen;
+            byte[] answer = new byte[ol+will_add+cipherlen];
+            System.arraycopy(src, 0, answer, 0, ol); 
+            answer[ol] = (byte)(ef0dlength/256);
+            answer[ol+1] = (byte) (ef0dlength%256);
+            answer[ol+2] = 0x0; // ECHClientHelloType.outer
+            answer[ol + 3] = KDF_HI; 
+            answer[ol + 4] = KDF_LO; 
+            answer[ol + 5] = AEAD_HI;
+            answer[ol + 6] = AEAD_LO;
+            answer[ol+7] = cfgid; // config id
+            answer[ol+8] = 0x0; // length id
+            answer[ol+9] = 0x20; // length mypub
+            System.arraycopy(mypub, 0, answer, ol+10, 32);
+            answer[ol+42] = (byte)(cipherlen/256);
+            answer[ol+43] = (byte)(cipherlen%256);
+            for (int i = 0; i < cipherlen; i++) {
+                answer[ol+will_add+i] = 0x0;
+            }
+            System.err.println("expanded into size = "+answer.length);
+            return answer; 
+        }
+
     }
 
     private static final

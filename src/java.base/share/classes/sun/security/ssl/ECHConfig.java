@@ -1,5 +1,7 @@
 package sun.security.ssl;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 
 /**
@@ -21,6 +23,7 @@ public class ECHConfig {
     byte[] publicKey;
     int[] cipher;
     HpkeSuite[] cipherSuite;
+    HpkeSuite selectedSuite;
     String publicName;
     int maxNameLength;
 
@@ -148,6 +151,7 @@ public class ECHConfig {
             cipherSuite[i] = hs;
             ptr += 4;
         }
+        this.selectedSuite = cipherSuite[0];
         this.maxNameLength = readBytes(binbuf, ptr, 1);
         ptr++;
         int pubnamelen = readBytes(binbuf, ptr, 1);
@@ -168,6 +172,55 @@ public class ECHConfig {
         return res;
     }
     
+    /**
+     * Create the bytes required for the encrypted_client_hello Extension
+     * @return the bytes that need to be used in the extension. In case of 
+     * an outer extension, the ephemeral public key (client generated) and
+     * the payload need to be added separately (in EchExtension)
+     * See https://datatracker.ietf.org/doc/draft-ietf-tls-esni/ section 5
+     */
+//     enum { outer(0), inner(1) } ECHClientHelloType;
+//
+//       struct {
+//          ECHClientHelloType type;
+//          select (ECHClientHello.type) {
+//              case outer:
+//                  HpkeSymmetricCipherSuite cipher_suite;
+//                  uint8 config_id;
+//                  opaque enc<0..2^16-1>;
+//                  opaque payload<1..2^16-1>;
+//              case inner:
+//                  Empty;
+//          };
+//       } ECHClientHello;
+   
+    byte [] produceExtension(boolean inner) throws IOException {
+        if (inner) {
+            return new byte[]{0x1}; // code for inner = 0x1, rest is empty
+        } else {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            baos.write(0x0);
+            baos.write(selectedSuite.toSerial());
+            baos.write(this.configId);
+            byte[] answer = baos.toByteArray();
+            return answer;
+        }
+    }
+    static final String OSSL_ECH_CONTEXT_STRING = "tls ech";
+
+    /**
+     * Create the info component required to create the HPKE context
+     * @return 
+     */
+    public byte[] createInfo() {
+        byte[] oecb = OSSL_ECH_CONTEXT_STRING.getBytes();
+        byte[] info = new byte[oecb.length + 1 + getRaw().length];
+        System.arraycopy(oecb, 0, info, 0, oecb.length);
+        info[oecb.length] = 0;
+        System.arraycopy(getRaw(), 0, info, oecb.length + 1, getRaw().length);
+        return info;
+    }
+
     @Override public String toString() {
         String v =  Integer.toHexString(version);
         return "ECHConfig version "+v
@@ -184,6 +237,15 @@ public class ECHConfig {
             System.err.println("Created Hpkesuite, kdfId = "+k+", aeaedid = "+a);
             this.kdfId = k;
             this.aeadId = a;
+        }
+        
+        byte[] toSerial() {
+            byte[] answer = new byte[4];
+            answer[0] = (byte)(this.kdfId >> 8);
+            answer[1] = (byte)(this.kdfId);
+            answer[2] = (byte)(this.aeadId >> 8);
+            answer[3] = (byte)(this.aeadId);
+            return answer;
         }
     }
 //    unsigned int public_name_len;

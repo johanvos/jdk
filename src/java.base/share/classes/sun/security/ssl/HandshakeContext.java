@@ -69,6 +69,7 @@ abstract class HandshakeContext implements ConnectionContext {
     final TransportContext                  conContext;
     final SSLConfiguration                  sslConfig;
     ECHConfig                               echConfig;
+    HPKEContext                             hpkeContext;
 
     // consolidated parameters
     final List<ProtocolVersion>             activeProtocols;

@@ -131,6 +131,16 @@ public class HPKEContext {
         }
     }
 
+    public PublicKey getEphemeralPublicKey() {
+        return ephemeralKeyPair.getPublic();
+    }
+
+    public byte[] getEphemeralPublicKeyBytes() {
+        byte[] answer = new byte[32];
+        System.arraycopy(getEphemeralPublicKey().getEncoded(), 12, answer, 0, 32);
+        return answer;
+    }
+
     /**
      * Convert the encoded bytes from an X25519 public key into a public key.
      * See HKDF for a similar operation
