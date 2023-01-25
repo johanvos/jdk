@@ -452,7 +452,10 @@ final class ClientHello {
             SessionId sessionId = new SessionId(new byte[0]);
 
             // a list of cipher suites sent by the client
-            List<CipherSuite> cipherSuites = chc.activeCipherSuites;
+            List<CipherSuite> ccipherSuites = chc.activeCipherSuites;
+            List<CipherSuite> cipherSuites = new ArrayList<>();
+            cipherSuites.addAll(ccipherSuites);
+            cipherSuites.add(CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV);
 
             //
             // Try to resume an existing session.
@@ -698,15 +701,18 @@ final class ClientHello {
             innerChm.extensions.produce(chc, extTypes);
             chc.setInnerEch(false);
             byte[] clear = innerChm.getEncodedByteArray();
+            SSLLogger.info("Before padding, clear ("+clear.length+") = ", clear);
             int clearLen = calculateClearLength(clear.length, echConfig.getMaxNameLength());
             byte[] newclear = new byte[clearLen];
             System.arraycopy(clear, 0, newclear, 0, clear.length);
             clear = newclear;
             
+            SSLLogger.info("After padding, clear ("+clear.length+") = ", clear);
+            
             byte[] pkt = chm.toByteArray();
             SSLLogger.info("orignal packets (pkt)", pkt);
             int cipherlen = clearLen + 16; // not valid for all AEAD
-            int oldlen = pkt.length;
+            int oldlen = pkt.length - 37;
             pkt = expandOuterCH(pkt, (byte)this.echConfig.getConfigId(), hpkeContext.getEphemeralPublicKeyBytes(), cipherlen);
             SSLLogger.info("pkt ("+pkt.length+")", pkt);
             byte[] aad = new byte[pkt.length - 4];
@@ -720,8 +726,9 @@ final class ClientHello {
             System.arraycopy(cipher, 0, aad, cipherStart, cipherlen);
 byte[] newCH = new byte[pkt.length - oldlen+1];
 System.arraycopy(aad, oldlen-5, newCH, 0, newCH.length);
+SSLLogger.info("NEWCH", newCH);
 chm.extensions.updateExtension(SSLExtension.CH_ECH, newCH);
-chc.innerClientHello = chm.toByteArray();
+chc.innerClientHello = innerChm.toByteArray();
 
  // ===========
             // Output the handshake message.
@@ -770,7 +777,7 @@ chc.innerClientHello = chm.toByteArray();
             byte KDF_LO = 0x1;
             byte AEAD_HI = 0x0;
             byte AEAD_LO = 0x1;
-            int ol = src.length-3; // remove encrypted_client_hello length + 00
+            int ol = src.length-40; // remove encrypted_client_hello length + 00
             int will_add = 44;
             int ef0dlength=1 + 4 + 1 + 2 + mypub.length+2+cipherlen;
             byte[] answer = new byte[ol+will_add+cipherlen];

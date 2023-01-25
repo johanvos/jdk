@@ -64,6 +64,7 @@ Thread.dumpStack();
             }
 
             ECHConfig echConfig = chc.getEchConfig();
+            System.err.println("Need to produce ECHEXT, inner = "+chc.isInnerEch());
             byte[] answer = echConfig.produceExtension(chc.isInnerEch());
             if (!chc.innerEch) {
                 ClientHelloMessage outer = chc.initialClientHelloMsg;
@@ -77,6 +78,7 @@ Thread.dumpStack();
                 baos.write(epb);
                 answer = baos.toByteArray();
             }
+            System.err.println("Will return ECHEXT, answer = "+Arrays.toString(answer));
             return answer;
         }
     }

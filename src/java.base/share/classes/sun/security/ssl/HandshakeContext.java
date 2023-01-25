@@ -161,8 +161,9 @@ abstract class HandshakeContext implements ConnectionContext {
 
         this.algorithmConstraints = SSLAlgorithmConstraints.wrap(
                 sslConfig.userSpecifiedAlgorithmConstraints);
-        this.activeProtocols =
-                getActiveProtocols(sslConfig, algorithmConstraints);
+//        this.activeProtocols =
+//                getActiveProtocols(sslConfig, algorithmConstraints);
+this.activeProtocols = List.of(ProtocolVersion.TLS13);
         if (activeProtocols.isEmpty()) {
             throw new SSLHandshakeException(
                 "No appropriate protocol (protocol is disabled or " +

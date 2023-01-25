@@ -129,6 +129,7 @@ public class ECHConfig {
         this.configId = readBytes(binbuf, ptr, 1);
         ptr++;
         this.kemId = readBytes(binbuf, ptr, 2);
+        System.err.println("configId = "+configId);
         System.err.println("kemId = "+kemId);
         ptr += 2;
         int publen = readBytes(binbuf, ptr, 2);
