@@ -29,10 +29,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.XECPrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
+import java.security.spec.NamedParameterSpec;
+import java.security.spec.XECPrivateKeySpec;
 import java.text.MessageFormat;
 import java.util.*;
 import javax.net.ssl.SSLException;
@@ -429,6 +438,26 @@ final class ClientHello {
             // blank
         }
 
+        KeyPair pruts() {
+            try {
+                String ecb = "c4:96:d5:4a:65:4b:3c:8c:da:75:ee:90:cf:26:cb:40:5a:61:e8:62:6a:10:4d:20:c9:b0:d9:a0:b8:f2:d5:59";
+                byte[] eencoded = HexFormat.ofDelimiter(":").parseHex(ecb);
+                NamedParameterSpec paramSpec = new NamedParameterSpec("X25519");
+                KeyFactory kf = KeyFactory.getInstance("XDH");
+                KeySpec privateSpec = new XECPrivateKeySpec(paramSpec, eencoded);
+
+                PrivateKey myPrivateKey = kf.generatePrivate(privateSpec);
+                PublicKey mypub = HPKEContext.generatePublicKeyFromPrivate((XECPrivateKey) myPrivateKey);
+                SSLLogger.info("PRUTS PK = ", mypub);
+                return new KeyPair(mypub, myPrivateKey);
+            } catch (NoSuchAlgorithmException | InvalidKeySpecException ex) {
+                ex.printStackTrace();
+            } catch (GeneralSecurityException ex) {
+                ex.printStackTrace();
+            }
+            return null;
+        }
+
         // Produce kickstart handshake message.
         @Override
         public byte[] produce(ConnectionContext context) throws IOException {
@@ -436,9 +465,11 @@ final class ClientHello {
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
             String innerCh = System.getProperty("ech.hidden");
             if (innerCh != null) {
+               // pruts();
                 byte[] echConfigBytes = Files.readAllBytes(Path.of("/tmp/ech.conf"));
                 this.echConfig = new ECHConfig(echConfigBytes);
                 PublicKey peerPub = HPKEContext.convertEncodedPublicKey(echConfig.getPublicKey());
+              //  KeyPair ephemeral = pruts(); //HPKEContext.deriveKeyPair(null);
                 KeyPair ephemeral = HPKEContext.deriveKeyPair(null);
                 SSLLogger.info("mypublickey", ephemeral.getPublic());
                 this.hpkeContext = new HPKEContext(peerPub, ephemeral, this.echConfig.createInfo());
@@ -700,13 +731,15 @@ final class ClientHello {
             chc.setInnerEch(true);
             innerChm.extensions.produce(chc, extTypes);
             chc.setInnerEch(false);
+            byte[] innerCH = innerChm.toByteArray();
+            SSLLogger.info("inner CH", innerCH);
+            System.err.println("Initially, inner CH = " + HexFormat.ofDelimiter(":").formatHex(innerCH));
             byte[] clear = innerChm.getEncodedByteArray();
             SSLLogger.info("Before padding, clear ("+clear.length+") = ", clear);
             int clearLen = calculateClearLength(clear.length, echConfig.getMaxNameLength());
             byte[] newclear = new byte[clearLen];
             System.arraycopy(clear, 0, newclear, 0, clear.length);
             clear = newclear;
-            
             SSLLogger.info("After padding, clear ("+clear.length+") = ", clear);
             
             byte[] pkt = chm.toByteArray();
@@ -715,20 +748,40 @@ final class ClientHello {
             int oldlen = pkt.length - 37;
             pkt = expandOuterCH(pkt, (byte)this.echConfig.getConfigId(), hpkeContext.getEphemeralPublicKeyBytes(), cipherlen);
             SSLLogger.info("pkt ("+pkt.length+")", pkt);
-            byte[] aad = new byte[pkt.length - 4];
+            byte[] aad = new byte[pkt.length];
+            
+// set tmp extension so that we get correct size of extensions            
+                        byte[] tmpCH = new byte[pkt.length - oldlen + 1];
+              System.arraycopy(pkt, oldlen - 1, tmpCH, 0, tmpCH.length);
+
+            chm.extensions.updateExtension(SSLExtension.CH_ECH, tmpCH);
+pkt = chm.toByteArray();
+            
+            
             int cipherStart = aad.length - cipherlen;
             System.err.println("Pktlen = "+pkt.length+", aadlen = "+aad.length+", cipherlen = "+cipherlen);
-            System.arraycopy(pkt,4, aad,0, aad.length);
+            System.arraycopy(pkt,0, aad,0, aad.length);
           // add first
-          SSLLogger.info("Before cipher calc, aad = ", aad);
-          SSLLogger.info("Before cipher calc, clear = ", clear);
+          SSLLogger.info("Before cipher calc, aad = ("+aad.length+")", aad);
+          SSLLogger.info("Before cipher calc, clear = ("+clear.length+")", clear);
+//          byte[] AAD = HexFormat.ofDelimiter(":").parseHex(someAadString);
+//          byte[] CLEAR = HexFormat.ofDelimiter(":").parseHex(someClearString);
             byte[] cipher = hpkeContext.seal(aad, clear);
+            
+            System.err.println("CIPHER = " + HexFormat.ofDelimiter(":").formatHex(cipher));
             System.arraycopy(cipher, 0, aad, cipherStart, cipherlen);
-byte[] newCH = new byte[pkt.length - oldlen+1];
-System.arraycopy(aad, oldlen-5, newCH, 0, newCH.length);
-SSLLogger.info("NEWCH", newCH);
-chm.extensions.updateExtension(SSLExtension.CH_ECH, newCH);
-chc.innerClientHello = innerChm.toByteArray();
+            byte[] newCH = new byte[pkt.length - oldlen + 1];
+            System.arraycopy(aad, oldlen - 1, newCH, 0, newCH.length);
+            SSLLogger.info("NEWCH", newCH);
+            chm.extensions.updateExtension(SSLExtension.CH_ECH, newCH);
+            chc.innerClientHello = innerChm.toByteArray();
+            SSLLogger.info("ClientHelloOuter = ", chm.toByteArray());
+if (Arrays.equals(innerCH, chc.innerClientHello) ) {
+    System.err.println("INNERCH OK");
+} else {
+        System.err.println("INNERCH CHANGED");
+
+}
 
  // ===========
             // Output the handshake message.
@@ -1605,4 +1658,60 @@ chc.innerClientHello = innerChm.toByteArray();
             throw new UnsupportedOperationException("Not supported yet.");
         }
     }
+    static final String someAadString = 
+            "03:03:38:cc:38:c6:fd:fe:ce:ca:f1:8d:e0:66:5d:85:"
+    +"01:5a:6c:7e:84:b2:ac:e6:fe:02:30:d3:ee:8c:40:cc:"
+    +"f2:70:20:9e:e8:ea:bf:fb:c8:a0:e6:3c:8a:12:be:75:"
+    +"dd:f3:73:d7:9f:8b:d8:e9:82:a4:1b:42:6b:77:88:cd:"
+    +"09:16:b1:00:08:13:02:13:03:13:01:00:ff:01:00:01:"
+    +"f7:00:0b:00:04:03:00:01:02:00:0a:00:16:00:14:00:"
+    +"1d:00:17:00:1e:00:19:00:18:01:00:01:01:01:02:01:"
+    +"03:01:04:00:23:00:00:00:16:00:00:00:17:00:00:00:"
+    +"0d:00:24:00:22:04:03:05:03:06:03:08:07:08:08:08:"
+    +"1a:08:1b:08:1c:08:09:08:0a:08:0b:08:04:08:05:08:"
+    +"06:04:01:05:01:06:01:00:2b:00:03:02:03:04:00:00:"
+    +"00:12:00:10:00:00:0d:63:6f:76:65:72:2e:64:65:66:"
+    +"6f:2e:69:65:00:10:00:12:00:10:05:6f:75:74:65:72:"
+    +"06:70:75:62:6c:69:63:02:68:32:00:2d:00:02:01:01:"
+    +"00:33:00:26:00:24:00:1d:00:20:e4:d4:36:00:3f:2a:"
+    +"16:c4:cb:00:66:57:1f:95:5a:0d:a6:c7:44:3d:47:72:"
+    +"07:e7:eb:46:70:02:e6:19:e2:60:fe:0d:01:3a:00:00:"
+    +"01:00:01:50:00:20:59:bc:41:76:2a:4d:5f:d3:a3:0f:"
+    +"4c:e7:0c:9e:94:c2:c3:f2:9b:9c:95:24:13:c3:97:70:"
+    +"d2:d2:79:35:40:5d:01:10:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00";
+    
+    static final String someClearString = 
+            "03:03:de:68:d1:55:5c:2a:84:4c:2d:dc:59:b5:aa:19:"
+    +"dc:77:50:9a:4f:e2:bd:ce:cd:6c:26:df:c1:bf:9b:f5:"
+    +"a7:db:00:00:08:13:02:13:03:13:01:00:ff:01:00:00:"
+    +"74:fd:00:00:0f:0e:00:0b:00:0a:00:23:00:16:00:17:"
+    +"00:0d:00:2b:00:00:00:0c:00:0a:00:00:07:64:65:66:"
+    +"6f:2e:69:65:00:10:00:18:00:16:05:69:6e:6e:65:72:"
+    +"06:73:65:63:72:65:74:08:68:74:74:70:2f:31:2e:31:"
+    +"00:2d:00:02:01:01:00:33:00:26:00:24:00:1d:00:20:"
+    +"d4:af:17:27:08:1a:7e:cf:e6:14:1e:b6:c9:4a:1a:3b:"
+    +"cc:79:02:30:e2:6a:de:1a:c3:24:94:35:d0:79:4e:19:"
+    +"fe:0d:00:01:01:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:"
+    +"00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00";
 }

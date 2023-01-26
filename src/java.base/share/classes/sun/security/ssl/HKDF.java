@@ -87,6 +87,9 @@ final class HKDF {
         if (salt == null) {
             salt = new SecretKeySpec(new byte[hmacLen], "HKDF-Salt");
         }
+        System.err.println("[HKDF] extract, salt = "+HexFormat.ofDelimiter(":").formatHex(salt.getEncoded()));
+        System.err.println("[HKDF] extract, inputkey = "+HexFormat.ofDelimiter(":").formatHex(inputKey.getEncoded()));
+
         hmacObj.init(salt);
 
         return new SecretKeySpec(hmacObj.doFinal(inputKey.getEncoded()),

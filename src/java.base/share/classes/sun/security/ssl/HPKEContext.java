@@ -70,6 +70,8 @@ public class HPKEContext {
 
     void do_middle(byte[] sharedSecret) throws IOException {
         System.err.println("DO_MIDDLE start");
+        System.err.println("Info = "+HexFormat.of().formatHex(info));
+        System.err.println("info_hash = "+"info_hash".getBytes());
         byte[] l1 = labeledExtract("".getBytes(), "psk_id_hash".getBytes(), SUITEID2, "".getBytes());
         System.err.println("Extract phase 1: " + Arrays.toString(l1));
         byte[] l2 = labeledExtract("".getBytes(), "info_hash".getBytes(), SUITEID2, info);
@@ -83,8 +85,11 @@ public class HPKEContext {
         System.err.println("secret bytes = " + Arrays.toString(secret));
         byte[] mykey = labeledExpand(secret, "key".getBytes(), key_schedule_context, SUITEID2, 16);
         System.err.println("key = " + Arrays.toString(mykey));
+        System.err.println("key = "+HexFormat.ofDelimiter(":").formatHex(mykey));
         byte[] base_nonce = labeledExpand(secret, "base_nonce".getBytes(), key_schedule_context, SUITEID2, 12);
         System.err.println("base_nonce = " + Arrays.toString(base_nonce));
+        System.err.println("base_nonce = "+HexFormat.ofDelimiter(":").formatHex(base_nonce));
+
         byte[] exporter_secret = labeledExpand(secret, "exp".getBytes(), key_schedule_context, SUITEID2, 32);
         System.err.println("exporter_secret = " + Arrays.toString(exporter_secret));
         System.err.println("DO_MIDDLE done");
@@ -212,6 +217,8 @@ public class HPKEContext {
             if (salt.length > 0) {
                 saltks = new SecretKeySpec(salt, "HmacSHA256");
             }
+            System.err.println("[hpke] labeledextract, salt = " + HexFormat.ofDelimiter(":").formatHex(salt));
+            System.err.println("[hpke] labeledextract, key = " + HexFormat.ofDelimiter(":").formatHex(inputKey.getEncoded()));
             return hkdf.extract(saltks, inputKey, "hkdf").getEncoded();
         } catch (NoSuchAlgorithmException ex) {
             ex.printStackTrace();
@@ -243,7 +250,7 @@ public class HPKEContext {
         return c;
     }
 
-    private static PublicKey generatePublicKeyFromPrivate(XECPrivateKey privateKey) throws GeneralSecurityException {
+    static PublicKey generatePublicKeyFromPrivate(XECPrivateKey privateKey) throws GeneralSecurityException {
         KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(X25519.name);
         keyPairGenerator.initialize(new NamedParameterSpec(X25519.name), new StaticSecureRandom(privateKey.getScalar().get()));
         return keyPairGenerator.generateKeyPair().getPublic();

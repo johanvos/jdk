@@ -1036,7 +1036,9 @@ final class ServerHello {
             try {
                 SSLLogger.info("Check accept, clientHello = ", chBytes);
                 SSLLogger.info("Check accept, serverHello = ", shBytes);
-                // create tbuf
+                System.err.println("clientHello = "+HexFormat.ofDelimiter(":").formatHex(chBytes));
+                System.err.println("serverHello = "+HexFormat.ofDelimiter(":").formatHex(shBytes));
+ // create tbuf
                 int chLen = chBytes.length;
                 int shLen = shBytes.length;
                 byte[] tbuf = new byte[chLen + shLen];

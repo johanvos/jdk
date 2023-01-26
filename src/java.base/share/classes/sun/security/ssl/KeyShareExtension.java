@@ -233,8 +233,11 @@ final class KeyShareExtension {
             if (chc.serverSelectedNamedGroup != null) {
                 // Response to HelloRetryRequest
                 namedGroups = List.of(chc.serverSelectedNamedGroup);
+                System.err.println("NAMEDGROUPS1 = "+namedGroups);
             } else {
                 namedGroups = chc.clientRequestedNamedGroups;
+                System.err.println("NAMEDGROUPS2 = "+namedGroups);
+
                 if (namedGroups == null || namedGroups.isEmpty()) {
                     // No supported groups.
                     if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
@@ -258,7 +261,7 @@ final class KeyShareExtension {
                         keyShares.add(new KeyShareEntry(ng.id,
                                 keyExchangeData));
                         ngTypes.add(ng.spec);
-                        if (ngTypes.size() == 2) {
+                        if (ngTypes.size() == 1) {
                             break;
                         }
                     }
