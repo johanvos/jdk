@@ -751,14 +751,14 @@ final class ClientHello {
             byte[] aad = new byte[pkt.length];
             
 // set tmp extension so that we get correct size of extensions            
-                        byte[] tmpCH = new byte[pkt.length - oldlen + 1];
-              System.arraycopy(pkt, oldlen - 1, tmpCH, 0, tmpCH.length);
+                        byte[] tmpCH = new byte[pkt.length - oldlen + 3];
+              System.arraycopy(pkt, oldlen - 3, tmpCH, 0, tmpCH.length);
 
             chm.extensions.updateExtension(SSLExtension.CH_ECH, tmpCH);
 pkt = chm.toByteArray();
             
             
-            int cipherStart = aad.length - cipherlen;
+            int cipherStart = aad.length - cipherlen-2;
             System.err.println("Pktlen = "+pkt.length+", aadlen = "+aad.length+", cipherlen = "+cipherlen);
             System.arraycopy(pkt,0, aad,0, aad.length);
           // add first
@@ -770,8 +770,8 @@ pkt = chm.toByteArray();
             
             System.err.println("CIPHER = " + HexFormat.ofDelimiter(":").formatHex(cipher));
             System.arraycopy(cipher, 0, aad, cipherStart, cipherlen);
-            byte[] newCH = new byte[pkt.length - oldlen + 1];
-            System.arraycopy(aad, oldlen - 1, newCH, 0, newCH.length);
+            byte[] newCH = new byte[pkt.length - oldlen + 3];
+            System.arraycopy(aad, oldlen - 3, newCH, 0, newCH.length);
             SSLLogger.info("NEWCH", newCH);
             chm.extensions.updateExtension(SSLExtension.CH_ECH, newCH);
             chc.innerClientHello = innerChm.toByteArray();
@@ -825,33 +825,44 @@ if (Arrays.equals(innerCH, chc.innerClientHello) ) {
             return clearLen;
         }
         private byte[] expandOuterCH(byte[] src,byte cfgid, byte[] mypub, int cipherlen) {
-            System.err.println("expand, src size = " + src.length+", cipherlen = "+cipherlen);
-            byte KDF_HI = 0x0; //should come from EchConfig
-            byte KDF_LO = 0x1;
-            byte AEAD_HI = 0x0;
-            byte AEAD_LO = 0x1;
-            int ol = src.length-40; // remove encrypted_client_hello length + 00
-            int will_add = 44;
+//            System.err.println("expand, src size = " + src.length+", cipherlen = "+cipherlen);
+//            byte KDF_HI = 0x0; //should come from EchConfig
+//            byte KDF_LO = 0x1;
+//            byte AEAD_HI = 0x0;
+//            byte AEAD_LO = 0x1;
+//            int ol = src.length-40; // remove encrypted_client_hello length + 00
+//            int will_add = 44;
+//            int ef0dlength=1 + 4 + 1 + 2 + mypub.length+2+cipherlen;
+//            byte[] answer = new byte[ol+will_add+cipherlen];
+//            System.arraycopy(src, 0, answer, 0, ol); 
+//            answer[ol] = (byte)(ef0dlength/256);
+//            answer[ol+1] = (byte) (ef0dlength%256);
+//            answer[ol+2] = 0x0; // ECHClientHelloType.outer
+//            answer[ol + 3] = KDF_HI; 
+//            answer[ol + 4] = KDF_LO; 
+//            answer[ol + 5] = AEAD_HI;
+//            answer[ol + 6] = AEAD_LO;
+//            answer[ol+7] = cfgid; // config id
+//            answer[ol+8] = 0x0; // length id
+//            answer[ol+9] = 0x20; // length mypub
+//            System.arraycopy(mypub, 0, answer, ol+10, 32);
+//            answer[ol+42] = (byte)(cipherlen/256);
+//            answer[ol+43] = (byte)(cipherlen%256);
+//            for (int i = 0; i < cipherlen; i++) {
+//                answer[ol+will_add+i] = 0x0;
+//            }
+//            System.err.println("expanded into size = "+answer.length);
+            byte[] answer = new byte[src.length + 4 + cipherlen];
+            System.arraycopy(src, 0, answer, 0, src.length);
             int ef0dlength=1 + 4 + 1 + 2 + mypub.length+2+cipherlen;
-            byte[] answer = new byte[ol+will_add+cipherlen];
-            System.arraycopy(src, 0, answer, 0, ol); 
-            answer[ol] = (byte)(ef0dlength/256);
-            answer[ol+1] = (byte) (ef0dlength%256);
-            answer[ol+2] = 0x0; // ECHClientHelloType.outer
-            answer[ol + 3] = KDF_HI; 
-            answer[ol + 4] = KDF_LO; 
-            answer[ol + 5] = AEAD_HI;
-            answer[ol + 6] = AEAD_LO;
-            answer[ol+7] = cfgid; // config id
-            answer[ol+8] = 0x0; // length id
-            answer[ol+9] = 0x20; // length mypub
-            System.arraycopy(mypub, 0, answer, ol+10, 32);
-            answer[ol+42] = (byte)(cipherlen/256);
-            answer[ol+43] = (byte)(cipherlen%256);
-            for (int i = 0; i < cipherlen; i++) {
-                answer[ol+will_add+i] = 0x0;
-            }
+            int lengthloc = src.length - 42;
+            answer[lengthloc] = (byte)(ef0dlength/256);
+            answer[lengthloc+1] = (byte) (ef0dlength%256);
+            int cipherloc = src.length;
+            answer[cipherloc] = (byte)(cipherlen/256);
+            answer[cipherloc+1] = (byte)(cipherlen%256);
             System.err.println("expanded into size = "+answer.length);
+
             return answer; 
         }
 

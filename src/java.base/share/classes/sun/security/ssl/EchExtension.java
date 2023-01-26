@@ -75,6 +75,8 @@ Thread.dumpStack();
                 byte[] epb = hpkeContext.getEphemeralPublicKeyBytes();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 baos.write(answer);
+                baos.write(0);
+                baos.write(0x20);
                 baos.write(epb);
                 answer = baos.toByteArray();
             }
