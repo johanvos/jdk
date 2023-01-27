@@ -869,6 +869,9 @@ final class ServerHello {
                 ByteBuffer message) throws IOException {
             // The consuming happens in client side only.
             ClientHandshakeContext chc = (ClientHandshakeContext) context;
+            
+            if (chc.echConfig != null) {
+            
             byte[] chBytes0 = chc.innerClientHello;
             int csize = chBytes0.length;
             byte[] chBytes = new byte[csize +4];
@@ -896,6 +899,7 @@ final class ServerHello {
                 chc.initialClientHelloMsg = chc.innerClientHelloMessage;
                 chc.innerClientHelloMessage.write(chc.handshakeOutput);
                 chc.handshakeHash.receive(last);
+            }
             }
 // clean up this consumer
             chc.handshakeConsumers.remove(SSLHandshake.SERVER_HELLO.id);

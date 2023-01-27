@@ -62,7 +62,10 @@ Thread.dumpStack();
                 }
                 return null;
             }
-
+            if (chc.echConfig == null) {
+                SSLLogger.info("No ECHConfig found");
+                return null;
+            }
             ECHConfig echConfig = chc.getEchConfig();
             System.err.println("Need to produce ECHEXT, inner = "+chc.isInnerEch());
             byte[] answer = echConfig.produceExtension(chc.isInnerEch());

@@ -731,6 +731,7 @@ final class ClientHello {
             }
 
 // ========= inner ECH
+if (this.echConfig != null) {
             ClientHelloMessage innerChm = new ClientHelloMessage(chc,
                     chc.clientHelloVersion, chm.sessionId, chm.cipherSuites,
                     chc.sslContext.getSecureRandom(), true);
@@ -797,6 +798,7 @@ final class ClientHello {
             SSLLogger.info("ClientHelloOuter = ", chm.toByteArray());
 
             // ===========
+}
             // Output the handshake message.
             chm.write(chc.handshakeOutput);
             chc.handshakeOutput.flush();
