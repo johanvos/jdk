@@ -2540,6 +2540,7 @@ public class Cipher {
         }
 
         chooseFirstProvider();
+        System.err.println("doFinal asked on "+this);
         return spi.engineDoFinal(input, output);
     }
 

@@ -48,6 +48,9 @@ public class KAKeyDerivation implements SSLKeyDerivation {
             HandshakeContext context,
             PrivateKey localPrivateKey,
             PublicKey peerPublicKey) {
+        Thread.dumpStack();
+       SSLLogger.info("Create KAKeyDerivation with localsk ", localPrivateKey);
+       SSLLogger.info("Create KAKeyDerivation with ppk ", peerPublicKey);
         this.algorithmName = algorithmName;
         this.context = context;
         this.localPrivateKey = localPrivateKey;
@@ -99,6 +102,7 @@ public class KAKeyDerivation implements SSLKeyDerivation {
             AlgorithmParameterSpec params) throws IOException {
         try {
             KeyAgreement ka = KeyAgreement.getInstance(algorithmName);
+            System.err.println("TL13DeriveKey, algname = "+algorithmName);
             ka.init(localPrivateKey);
             ka.doPhase(peerPublicKey, true);
             SecretKey sharedSecret

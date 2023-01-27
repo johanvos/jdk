@@ -118,6 +118,7 @@ abstract class HandshakeContext implements ConnectionContext {
     byte[]                                  certRequestContext;
 
     byte[] innerClientHello; // if ECH is used
+    RandomCookie innerClientHelloRandom;
     ////////////////////
     // Extensions
 

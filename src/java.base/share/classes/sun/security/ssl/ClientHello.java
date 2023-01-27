@@ -95,12 +95,17 @@ final class ClientHello {
 
         private static final byte[]  NULL_COMPRESSION = new byte[] {0};
 
+        public Map<SSLExtension, byte[]> getExtensions() {
+            return extensions.getExtMap();
+        }
+        void setExtensions(Map<SSLExtension, byte[]> m) {
+            this.extensions.setExtMap(m);
+        }
         ClientHelloMessage(HandshakeContext handshakeContext,
                 int clientVersion, SessionId sessionId,
                 List<CipherSuite> cipherSuites, SecureRandom generator, boolean inner) {
             super(handshakeContext);
             this.inner = inner;
-            Thread.dumpStack();
             this.isDTLS = handshakeContext.sslContext.isDTLS();
 
             this.clientVersion = clientVersion;
@@ -462,6 +467,7 @@ final class ClientHello {
         @Override
         public byte[] produce(ConnectionContext context) throws IOException {
             // The producing happens in client side only.
+            Thread.dumpStack();
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
             String innerCh = System.getProperty("ech.hidden");
             if (innerCh != null) {
@@ -729,7 +735,18 @@ final class ClientHello {
                     chc.clientHelloVersion, chm.sessionId, chm.cipherSuites,
                     chc.sslContext.getSecureRandom(), true);
             chc.setInnerEch(true);
+            chc.innerClientHelloMessage = innerChm;
+            chc.innerClientHelloRandom = innerChm.clientRandom;
             innerChm.extensions.produce(chc, extTypes);
+          
+//            Map<SSLExtension, byte[]> orig = chm.getExtensions();
+//            int origl = chm.extensions.length();
+//            innerChm.setExtensions(chm.getExtensions());
+//            innerChm.extensions.setLength(origl);
+//            byte[] echbytes = new byte[]{(byte)0xfe, (byte)0xed, 0x00, 0x01, 0x01};
+//            chm.extensions.updateExtension(SSLExtension.CH_ECH, echbytes);
+
+            
             chc.setInnerEch(false);
             byte[] innerCH = innerChm.toByteArray();
             SSLLogger.info("inner CH", innerCH);
@@ -852,6 +869,7 @@ final class ClientHello {
         @Override
         public byte[] produce(ConnectionContext context,
                 HandshakeMessage message) throws IOException {
+            Thread.dumpStack();
             // The producing happens in client side only.
             ClientHandshakeContext chc = (ClientHandshakeContext)context;
 

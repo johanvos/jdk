@@ -887,6 +887,16 @@ final class ServerHello {
             dup.get(shBytes, 4, size);
             boolean echOK = checkAcceptConfirmation(chBytes, shBytes);
             System.err.println("SERVERHELLO accepted us? " + echOK);
+            if (echOK) {
+                byte[] last = chc.handshakeHash.removeLastReceived();
+                System.err.println("LAST hash was "+last.length+ " bytes");
+                chc.handshakeHash.finish();
+                System.err.println("chrandom was "+chc.clientHelloRandom+ " and will be changed to "+chc.innerClientHelloRandom);
+                chc.clientHelloRandom = chc.innerClientHelloRandom;
+                chc.initialClientHelloMsg = chc.innerClientHelloMessage;
+                chc.innerClientHelloMessage.write(chc.handshakeOutput);
+                chc.handshakeHash.receive(last);
+            }
 // clean up this consumer
             chc.handshakeConsumers.remove(SSLHandshake.SERVER_HELLO.id);
             if (!chc.handshakeConsumers.isEmpty()) {
@@ -1244,6 +1254,7 @@ final class ServerHello {
                         SSLHandshake.FINISHED.id,
                         SSLHandshake.FINISHED);
             } else {
+                System.err.println("STORE handshakeKeyExchange on chc!");
                 SSLKeyExchange ke = SSLKeyExchange.valueOf(
                         chc.negotiatedCipherSuite.keyExchange,
                         chc.negotiatedProtocol);
@@ -1353,7 +1364,9 @@ final class ServerHello {
 
             // Change client/server handshake traffic secrets.
             // Refresh handshake hash
+            System.err.println("UPDATE HSH");
             chc.handshakeHash.update();
+            System.err.println("UPDATE HSH done");
 
             SSLKeyExchange ke = chc.handshakeKeyExchange;
             if (ke == null) {
@@ -1361,7 +1374,7 @@ final class ServerHello {
                 throw chc.conContext.fatal(Alert.INTERNAL_ERROR,
                         "Not negotiated key shares");
             }
-
+            System.err.println("SSLKeyExchange ke = "+ke+" of class "+ke.getClass()+" created based on chc.handshakeKeyExchange");
             SSLKeyDerivation handshakeKD = ke.createKeyDerivation(chc);
             SecretKey handshakeSecret = handshakeKD.deriveKey(
                     "TlsHandshakeSecret", null);
@@ -1511,7 +1524,7 @@ final class ServerHello {
             //
             // validate
             //
-
+System.err.println("WE NEED TO SWAP to inner CH");
             // Check and launch ClientHello extensions.
             SSLExtension[] extTypes = chc.sslConfig.getEnabledExtensions(
                     SSLHandshake.HELLO_RETRY_REQUEST);
@@ -1525,7 +1538,7 @@ final class ServerHello {
             // Change client/server handshake traffic secrets.
             // Refresh handshake hash
             chc.handshakeHash.finish();     // reset the handshake hash
-
+System.err.println("HANDSHAKE FINISED?");
             // calculate the transcript hash of the 1st ClientHello message
             HandshakeOutStream hos = new HandshakeOutStream(null);
             try {

@@ -151,14 +151,15 @@ final class SSLSocketInputRecord extends InputRecord implements SSLRecord {
     @Override
     Plaintext[] decode(ByteBuffer[] srcs, int srcsOffset,
             int srcsLength) throws IOException, BadPaddingException {
-
+        System.err.println("SSLINPUTRECORD, decode len = "+srcsLength+", offset = "+srcsOffset);
         if (isClosed) {
+            System.err.println("SSLINPUTREC, closed");
             return null;
         }
 
         // read header
-        readHeader();
-
+       int rh = readHeader();
+        System.err.println("SSLINPUTRECORD SSLDECODE, header = "+rh+", header[0] = "+header[0]);
         Plaintext[] plaintext = null;
         boolean cleanInBuffer = true;
         try {
@@ -179,6 +180,7 @@ final class SSLSocketInputRecord extends InputRecord implements SSLRecord {
             // The record header should be consumed.
             if (plaintext == null) {
                 plaintext = decodeInputRecord();
+                System.err.println("SSLINPUTRECORD SSLSI, decodedIR = "+plaintext);
             }
         } catch(InterruptedIOException e) {
             // do not clean header and recordBody in case of Socket Timeout
@@ -190,6 +192,7 @@ final class SSLSocketInputRecord extends InputRecord implements SSLRecord {
                 recordBody.clear();
             }
         }
+        System.err.println("SSLINPUTRECORD return plaintext "+plaintext);
         return plaintext;
     }
 

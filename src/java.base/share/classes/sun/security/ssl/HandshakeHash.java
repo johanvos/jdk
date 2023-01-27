@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.LinkedList;
 import javax.crypto.SecretKey;
 import sun.security.util.MessageDigestSpi2;
@@ -41,6 +42,7 @@ final class HandshakeHash {
     private boolean hasBeenUsed;
 
     HandshakeHash() {
+        System.err.println("HSH created");
         this.transcriptHash = new CacheOnlyHash();
         this.reserves = new LinkedList<>();
         this.hasBeenUsed = false;
@@ -49,6 +51,7 @@ final class HandshakeHash {
     // fix the negotiated protocol version and cipher suite
     void determine(ProtocolVersion protocolVersion,
             CipherSuite cipherSuite) {
+        System.err.println("[HSH] determine for protocolVersion "+protocolVersion+" and suite "+cipherSuite);
         if (!(transcriptHash instanceof CacheOnlyHash coh)) {
             throw new IllegalStateException(
                     "Not expected instance of transcript hash");
@@ -71,6 +74,7 @@ final class HandshakeHash {
     }
 
     HandshakeHash copy() {
+        System.err.println("HSH copy");
         if (transcriptHash instanceof CacheOnlyHash) {
             HandshakeHash result = new HandshakeHash();
             result.transcriptHash = ((CacheOnlyHash)transcriptHash).copy();
@@ -83,10 +87,13 @@ final class HandshakeHash {
     }
 
     void receive(byte[] input) {
+        System.err.println("[HSH] receive "+input.length);
         reserves.add(Arrays.copyOf(input, input.length));
     }
 
     void receive(ByteBuffer input, int length) {
+                System.err.println("[HSH] receive2 "+length);
+Thread.dumpStack();
         if (input.hasArray()) {
             int from = input.position() + input.arrayOffset();
             int to = from + length;
@@ -100,25 +107,33 @@ final class HandshakeHash {
         }
     }
     void receive(ByteBuffer input) {
+                System.err.println("[HSH] receive3 "+input.remaining());
+
         receive(input, input.remaining());
     }
 
     // For HelloRetryRequest only! Please use this method very carefully!
     void push(byte[] input) {
+        System.err.println("[HSH] push");
         reserves.push(Arrays.copyOf(input, input.length));
     }
 
     // For PreSharedKey to modify the state of the PSK binder hash
     byte[] removeLastReceived() {
+        System.err.println("[HSH] remvoelastreceived");
+
         return reserves.removeLast();
     }
 
     void deliver(byte[] input) {
+        System.err.println("HSH, deliver "+input.length+" bytes");
         update();
         transcriptHash.update(input, 0, input.length);
     }
 
     void deliver(byte[] input, int offset, int length) {
+        System.err.println("[HSH] deliver "+length+" bytes:");
+        System.err.println("[HSH] "+ HexFormat.ofDelimiter(":").formatHex(input));
         update();
         transcriptHash.update(input, offset, length);
     }
@@ -162,6 +177,8 @@ final class HandshakeHash {
     }
 
     void update() {
+        System.err.println("[HSH] update!");
+        Thread.dumpStack();
         while (reserves.size() != 0) {
             byte[] holder = reserves.remove();
             transcriptHash.update(holder, 0, holder.length);
@@ -170,12 +187,15 @@ final class HandshakeHash {
     }
 
     byte[] digest() {
+        System.err.println("[HSH] digest, th = "+transcriptHash+" of class "+transcriptHash.getClass());
+        Thread.dumpStack();
         // Note that the reserve handshake message may be not a part of
         // the expected digest.
         return transcriptHash.digest();
     }
 
     void finish() {
+        System.err.println("[HSH] finish!");
         this.transcriptHash = new CacheOnlyHash();
         this.reserves = new LinkedList<>();
         this.hasBeenUsed = false;
@@ -581,6 +601,8 @@ final class HandshakeHash {
         private final TranscriptHash transcriptHash;
 
         T13HandshakeHash(CipherSuite cipherSuite) {
+            System.err.println("[T13HSH] created with cipherSuite "+cipherSuite);
+            Thread.dumpStack();
             MessageDigest md;
             try {
                 md = MessageDigest.getInstance(cipherSuite.hashAlg.name);
@@ -599,11 +621,14 @@ final class HandshakeHash {
 
         @Override
         public void update(byte[] input, int offset, int length) {
+            Thread.dumpStack();
+            System.err.println("[HSH] updating with "+length+" bytes");
             transcriptHash.update(input, offset, length);
         }
 
         @Override
         public byte[] digest() {
+            System.err.println("[HSH] need to create digest on "+transcriptHash+" of class "+transcriptHash.getClass());
             return transcriptHash.digest();
         }
 
@@ -620,17 +645,25 @@ final class HandshakeHash {
 
         CloneableHash(MessageDigest md) {
             this.md = md;
+            Thread.dumpStack();
+            System.err.println("Create CLONHAS at " + this+", md = "+md);
         }
 
         @Override
         public void update(byte[] input, int offset, int length) {
+            System.err.println("CLONHAS update at "+this+", add "+input.length+", offset = " + offset+", len = " + length+"[0] = "+input[0]);
+            System.err.println("clonhas update: "+HexFormat.ofDelimiter(":").formatHex(input));
             md.update(input, offset, length);
         }
 
         @Override
         public byte[] digest() {
             try {
-                return ((MessageDigest)md.clone()).digest();
+                System.err.println("CLONHAS, digest asked for "+this);
+                Thread.dumpStack();
+                byte[] answer = ((MessageDigest)md.clone()).digest();
+                System.err.println("CLONHASDIGEST = "+HexFormat.ofDelimiter(":").formatHex(answer));
+                return answer;
             } catch (CloneNotSupportedException ex) {
                 // unlikely
                 return new byte[0];

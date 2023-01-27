@@ -165,6 +165,19 @@ final class SSLExtensions {
             len -= extLen + 4;
         }
     }
+    
+    Map<SSLExtension, byte[]> getExtMap() {
+        return this.extMap;
+    }
+    
+    void setLength(int l) {
+        this.encodedLength = l;
+    }
+
+    void setExtMap(Map<SSLExtension, byte[]> m) {
+        extMap.clear();
+        extMap.putAll(m);
+    }
 
     byte[] get(SSLExtension ext) {
         return extMap.get(ext);
@@ -330,7 +343,7 @@ final class SSLExtensions {
 
     // Note that TLS 1.3 may use empty extensions.  Please consider it while
     // using this method.
-    int length() {
+    public int length() {
         if (extMap.isEmpty()) {
             return 0;
         } else {

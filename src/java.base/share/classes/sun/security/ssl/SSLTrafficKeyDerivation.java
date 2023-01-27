@@ -138,6 +138,7 @@ enum SSLTrafficKeyDerivation implements SSLKeyDerivationGenerator {
 
         T13TrafficKeyDerivation(
                 HandshakeContext context, SecretKey secret) {
+            Thread.dumpStack();
             this.secret = secret;
             this.cs = context.negotiatedCipherSuite;
         }
@@ -146,6 +147,7 @@ enum SSLTrafficKeyDerivation implements SSLKeyDerivationGenerator {
         public SecretKey deriveKey(String algorithm,
                 AlgorithmParameterSpec params) throws IOException {
             KeySchedule ks = KeySchedule.valueOf(algorithm);
+            System.err.println("SHKEYGENERATION, derivekey with algorithm " + algorithm+" and params "+params);
             try {
                 HKDF hkdf = new HKDF(cs.hashAlg.name);
                 byte[] hkdfInfo =

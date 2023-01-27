@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 import static sun.security.ssl.CipherType.AEAD_CIPHER;
 import static sun.security.ssl.CipherType.BLOCK_CIPHER;
@@ -445,6 +446,9 @@ enum SSLCipher {
                       ProtocolVersion[]>[] readCipherGenerators,
               Map.Entry<WriteCipherGenerator,
                       ProtocolVersion[]>[] writeCipherGenerators) {
+        Thread.dumpStack();
+        System.err.println("Create SSLCipher "+ Objects.hashCode(this)+", transformation = "+transformation);
+        System.err.println("keysize = " + keySize+", exkeysize = " + expandedKeySize+", ivsize = " +ivSize+", fivsize = " +fixedIvSize);
         this.transformation = transformation;
         String[] splits = transformation.split("/");
         this.algorithm = splits[0];
@@ -1824,6 +1828,8 @@ enum SSLCipher {
                     Key key, AlgorithmParameterSpec params,
                     SecureRandom random) throws GeneralSecurityException {
                 super(authenticator, protocolVersion);
+                Thread.dumpStack();
+                System.err.println("Created gcmreadcipher " +Objects.hashCode(this));
                 this.cipher = Cipher.getInstance(algorithm);
                 this.tagSize = sslCipher.tagSize;
                 this.key = key;
@@ -1905,6 +1911,8 @@ enum SSLCipher {
                 }
 
                 try {
+                     System.err.println("SSLCipher doFinal asked on "+ Objects.hashCode(this));
+
                     len = cipher.doFinal(bb, pt);
                 } catch (IllegalBlockSizeException ibse) {
                     // unlikely to happen

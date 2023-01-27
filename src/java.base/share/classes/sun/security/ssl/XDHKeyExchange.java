@@ -180,12 +180,15 @@ final class XDHKeyExchange {
                 }
 
                 NamedGroup ng = ((XDHEPossession) poss).namedGroup;
+                System.err.println("Getting handshakeCredentials from "+context+""
+                        + ": "+context.handshakeCredentials);
                 for (SSLCredentials cred : context.handshakeCredentials) {
                     if (!(cred instanceof XDHECredentials)) {
                         continue;
                     }
                     if (ng.equals(((XDHECredentials) cred).namedGroup)) {
                         xdheCredentials = (XDHECredentials) cred;
+                        SSLLogger.info("yes, we have credentails! ", xdheCredentials);
                         break;
                     }
                 }

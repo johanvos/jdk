@@ -78,7 +78,9 @@ final class SSLSecretDerivation implements SSLKeyDerivation {
             HandshakeContext context, SecretKey secret) {
         this.secret = secret;
         this.hashAlg = context.negotiatedCipherSuite.hashAlg;
+        System.err.println("SSLSecretDerivation will use transcripthash, hsh = "+context.handshakeHash);
         context.handshakeHash.update();
+        Thread.dumpStack();
         this.transcriptHash = context.handshakeHash.digest();
     }
 
@@ -89,6 +91,8 @@ final class SSLSecretDerivation implements SSLKeyDerivation {
     @Override
     public SecretKey deriveKey(String algorithm,
             AlgorithmParameterSpec params) throws IOException {
+        System.err.println("DERIVEKEY for alg "+algorithm);
+        Thread.dumpStack();
         SecretSchedule ks = SecretSchedule.valueOf(algorithm);
         try {
             byte[] expandContext;
@@ -105,6 +109,7 @@ final class SSLSecretDerivation implements SSLKeyDerivation {
                             algorithm);
                 }
             } else {
+                System.err.println("SSLSecretDerivation, expandContext set to transcriptHash");
                 expandContext = transcriptHash;
             }
             byte[] hkdfInfo = createHkdfInfo(ks.label,

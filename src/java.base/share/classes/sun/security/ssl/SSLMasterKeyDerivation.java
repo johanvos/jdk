@@ -45,9 +45,12 @@ enum SSLMasterKeyDerivation implements SSLKeyDerivationGenerator {
 
     SSLMasterKeyDerivation(String name) {
         this.name = name;
+        System.err.println("SSLMKD for "+name);
     }
 
     static SSLMasterKeyDerivation valueOf(ProtocolVersion protocolVersion) {
+        System.err.println("SSLMKD for pv "+protocolVersion);
+
         switch (protocolVersion) {
             case SSL30:
                 return SSLMasterKeyDerivation.SSL30;
@@ -66,6 +69,7 @@ enum SSLMasterKeyDerivation implements SSLKeyDerivationGenerator {
     @Override
     public SSLKeyDerivation createKeyDerivation(HandshakeContext context,
             SecretKey secretKey) throws IOException {
+        System.err.println("SSLMKD1");
         return new LegacyMasterKeyDerivation(context, secretKey);
     }
 
@@ -78,6 +82,8 @@ enum SSLMasterKeyDerivation implements SSLKeyDerivationGenerator {
 
         LegacyMasterKeyDerivation(
                 HandshakeContext context, SecretKey preMasterSecret) {
+                    System.err.println("SSLMKD2");
+
             this.context = context;
             this.preMasterSecret = preMasterSecret;
         }
@@ -86,6 +92,7 @@ enum SSLMasterKeyDerivation implements SSLKeyDerivationGenerator {
         @SuppressWarnings("deprecation")
         public SecretKey deriveKey(String algorithm,
                 AlgorithmParameterSpec params) throws IOException {
+                    System.err.println("SSLMKD3");
 
             CipherSuite cipherSuite = context.negotiatedCipherSuite;
             ProtocolVersion protocolVersion = context.negotiatedProtocol;

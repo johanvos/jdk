@@ -288,6 +288,10 @@ final class KeyShareExtension {
 
         private static byte[] getShare(ClientHandshakeContext chc,
                 NamedGroup ng) {
+            if (chc.innerEch) {
+                SSLPossession existing = chc.handshakePossessions.get(0);
+                return existing.encode();
+            }
             SSLKeyExchange ke = SSLKeyExchange.valueOf(ng);
             if (ke == null) {
                 if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
@@ -298,6 +302,8 @@ final class KeyShareExtension {
                 SSLPossession[] poses = ke.createPossessions(chc);
                 for (SSLPossession pos : poses) {
                     // update the context
+                     SSLLogger.info("Adding2 KEYSHAREEXTENSION POSS ", pos);
+
                     chc.handshakePossessions.add(pos);
                     // May need more possession types in the future.
                     if (pos instanceof NamedGroupPossession) {
@@ -391,6 +397,7 @@ final class KeyShareExtension {
             }
 
             if (!credentials.isEmpty()) {
+                SSLLogger.info("Adding credentials to handshake credentials: ", credentials);
                 shc.handshakeCredentials.addAll(credentials);
             } else {
                 // New handshake credentials are required from the client side.
@@ -582,6 +589,7 @@ final class KeyShareExtension {
                     // update the context
                     shc.handshakeKeyExchange = ke;
                     shc.handshakePossessions.add(pos);
+                    SSLLogger.info("Adding KEYSHAREEXTENSION POSS ", pos);
                     keyShare = new KeyShareEntry(ng.id, pos.encode());
                     break;
                 }
@@ -693,6 +701,7 @@ final class KeyShareExtension {
             }
 
             // update the context
+            System.err.println("KEYSHAREEXTENSION will store "+ke);
             chc.handshakeKeyExchange = ke;
             chc.handshakeCredentials.add(credentials);
             chc.handshakeExtensions.put(SSLExtension.SH_KEY_SHARE, spec);
