@@ -446,7 +446,6 @@ enum SSLCipher {
                       ProtocolVersion[]>[] readCipherGenerators,
               Map.Entry<WriteCipherGenerator,
                       ProtocolVersion[]>[] writeCipherGenerators) {
-        Thread.dumpStack();
         System.err.println("Create SSLCipher "+ Objects.hashCode(this)+", transformation = "+transformation);
         System.err.println("keysize = " + keySize+", exkeysize = " + expandedKeySize+", ivsize = " +ivSize+", fivsize = " +fixedIvSize);
         this.transformation = transformation;
@@ -1828,8 +1827,6 @@ enum SSLCipher {
                     Key key, AlgorithmParameterSpec params,
                     SecureRandom random) throws GeneralSecurityException {
                 super(authenticator, protocolVersion);
-                Thread.dumpStack();
-                System.err.println("Created gcmreadcipher " +Objects.hashCode(this));
                 this.cipher = Cipher.getInstance(algorithm);
                 this.tagSize = sslCipher.tagSize;
                 this.key = key;

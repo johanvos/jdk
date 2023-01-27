@@ -246,7 +246,7 @@ final class HttpsClient extends HttpClient
                 int connectTimeout)
         throws IOException {
         PlatformLogger logger = HttpURLConnection.getHttpLogger();
-        if (logger.isLoggable(PlatformLogger.Level.FINEST)) {
+        if (true || logger.isLoggable(PlatformLogger.Level.FINEST)) {
              logger.finest("Creating new HttpsClient with url:" + url + " and proxy:" + proxy +
              " with connect timeout:" + connectTimeout);
         }
@@ -255,8 +255,14 @@ final class HttpsClient extends HttpClient
         this.proxyDisabled = true;
 
         this.host = url.getHost();
+        String outerHost = System.getProperty("ech.outer");
+        System.err.println("GOT AN OUTER HOST? " + outerHost);
+        if (outerHost != null) this.host = outerHost;
+//        this.host="cloudflare-esni.com";
+        System.err.println("HOST = "+this.host);
         this.url = url;
         port = url.getPort();
+        System.err.println("PORT = "+this.port);
         if (port == -1) {
             port = getDefaultPort();
         }
@@ -374,6 +380,7 @@ final class HttpsClient extends HttpClient
                 }
             }
         }
+        System.err.println("RET? "+ret);
         if (ret == null) {
             ret = new HttpsClient(sf, url, p, connectTimeout);
             if (httpuc != null) {

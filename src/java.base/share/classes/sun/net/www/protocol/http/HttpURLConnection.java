@@ -1171,10 +1171,13 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
     }
 
     protected void plainConnect0()  throws IOException {
+        System.err.println("PLAINCONNECT0");
         // try to see if request can be served from local cache
         if (cacheHandler != null && getUseCaches()) {
+            System.err.println("USE CACHE");
             try {
                 URI uri = ParseUtil.toURI(url);
+                System.err.println("URI = "+uri);
                 if (uri != null) {
                     cachedResponse = cacheHandler.get(uri, getRequestMethod(), getUserSetHeaders().getHeaders());
                     if ("https".equalsIgnoreCase(uri.getScheme())
@@ -1201,6 +1204,7 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
             }
         }
         try {
+            System.err.println("NOCACHE");
             /* Try to open connections using the following scheme,
              * return on the first one that's successful:
              * 1) if (instProxy != null)
@@ -1210,6 +1214,7 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
              */
 
             if (instProxy == null) { // no instance Proxy is set
+                System.err.println("NOINSTPROX");
                 /**
                  * Do we have to use a proxy?
                  */
@@ -1222,6 +1227,7 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
                                  }
                              });
                 if (sel != null) {
+                    System.err.println("PROXUSEL! "+sel);
                     URI uri = sun.net.www.ParseUtil.toURI(url);
                     if (logger.isLoggable(PlatformLogger.Level.FINEST)) {
                         logger.finest("ProxySelector Request for " + uri);
@@ -1270,10 +1276,13 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
                         }
                     }
                 } else {
+                    System.err.println("NOPROXY");
                     // No proxy selector, create http client with no proxy
                     if (!failedOnce) {
+                        System.err.println("NEVERFAILED");
                         http = getNewHttpClient(url, null, connectTimeout);
                         http.setReadTimeout(readTimeout);
+                        System.err.println("DONE");
                     } else {
                         // make sure to construct new connection if first
                         // attempt failed
@@ -1305,6 +1314,7 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
     // subclass HttpsClient will overwrite & return an instance of HttpsClient
     protected HttpClient getNewHttpClient(URL url, Proxy p, int connectTimeout)
         throws IOException {
+        System.err.println("HUC, getnewhttpc");
         return HttpClient.New(url, p, connectTimeout, this);
     }
 

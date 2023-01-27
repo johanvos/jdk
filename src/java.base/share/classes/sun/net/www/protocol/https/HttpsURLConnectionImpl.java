@@ -139,7 +139,9 @@ public class HttpsURLConnectionImpl
      * establishing an SSL connection to the server as necessary.
      */
     public void connect() throws IOException {
+        System.err.println("HTTPSURLCONNECTION, connect with delegate = "+delegate+" of class "+delegate.getClass());
         delegate.connect();
+        System.err.println("CONNECTED!");
     }
 
     /**

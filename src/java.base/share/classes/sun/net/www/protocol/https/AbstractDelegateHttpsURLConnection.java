@@ -176,7 +176,9 @@ public abstract class AbstractDelegateHttpsURLConnection extends
     public void connect() throws IOException {
         if (connected)
             return;
+        System.err.println("NOW PLAIN CONNECT");
         plainConnect();
+        System.err.println("PLAIN CONNECT DONE");
         if (cachedResponse != null) {
             // using cached response
             return;
@@ -190,6 +192,7 @@ public abstract class AbstractDelegateHttpsURLConnection extends
     // will try to use cached HttpsClient
     protected HttpClient getNewHttpClient(URL url, Proxy p, int connectTimeout)
         throws IOException {
+        System.err.println("ADHU1");
         return HttpsClient.New(getSSLSocketFactory(), url,
                                getHostnameVerifier(), p, true, connectTimeout,
                                this);
@@ -199,6 +202,8 @@ public abstract class AbstractDelegateHttpsURLConnection extends
     protected HttpClient getNewHttpClient(URL url, Proxy p, int connectTimeout,
                                           boolean useCache)
         throws IOException {
+                System.err.println("ADHU2");
+
         return HttpsClient.New(getSSLSocketFactory(), url,
                                getHostnameVerifier(), p,
                                useCache, connectTimeout, this);
