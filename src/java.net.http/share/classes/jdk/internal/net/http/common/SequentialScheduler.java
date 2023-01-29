@@ -146,7 +146,9 @@ public final class SequentialScheduler {
         @Override
         public final void run(DeferredCompleter taskCompleter) {
             try {
+System.err.println("[SS] run CRT");
                 run();
+System.err.println("[SS] run CRT done");
             } finally {
                 taskCompleter.complete();
             }
@@ -202,7 +204,9 @@ public final class SequentialScheduler {
             boolean locked = lock.tryLock();
             assert locked : "contention detected in SequentialScheduler";
             try {
+System.err.println("[SS] mainLoop start for mainLoop = " + mainLoop);
                 mainLoop.run();
+System.err.println("[SS] mainLoop done for mainLoop = " + mainLoop);
             } finally {
                 if (locked) lock.unlock();
             }
@@ -232,6 +236,8 @@ public final class SequentialScheduler {
     }
 
     public SequentialScheduler(RestartableTask restartableTask) {
+System.err.println("[SS] schedule " + restartableTask);
+Thread.dumpStack();
         this.restartableTask = requireNonNull(restartableTask);
         this.completer = new TryEndDeferredCompleter();
         this.schedulableTask = new SchedulableTask();

@@ -120,6 +120,7 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
     @Override
     public SSLEngineResult wrap(ByteBuffer[] appData,
             int offset, int length, ByteBuffer netData) throws SSLException {
+        System.err.println("I am asked to wrap some data with length "+length);
         return wrap(appData, offset, length, new ByteBuffer[]{ netData }, 0, 1);
     }
 
@@ -143,6 +144,7 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
                     dsts, dstsOffset, dstsLength);
 
             try {
+                System.err.println("SSEI, srcsl = "+srcsLength+". dstsL = "+dstsLength);
                 return writeRecord(
                     srcs, srcsOffset, srcsLength, dsts, dstsOffset, dstsLength);
             } catch (SSLProtocolException spe) {
@@ -179,12 +181,17 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
 
         HandshakeContext hc = conContext.handshakeContext;
         HandshakeStatus hsStatus = null;
+        System.err.println("WRITERECORD, neg = "+conContext.isNegotiated+", broken = " + conContext.isBroken+", iic = " + conContext.isInboundClosed() +", iobc = " + conContext.isOutboundClosed());
+       Thread.dumpStack();
         if (!conContext.isNegotiated && !conContext.isBroken &&
                 !conContext.isInboundClosed() &&
                 !conContext.isOutboundClosed()) {
+            System.err.println("WRITERECORD, KICKSTART context "+conContext);
             conContext.kickstart();
+            System.err.println("WRITERECORD, KICKSTARTed ");
 
             hsStatus = conContext.getHandshakeStatus();
+            System.err.println("SSEI, hsStatus = "+hsStatus);
             if (hsStatus == HandshakeStatus.NEED_UNWRAP) {
                 /*
                  * For DTLS, if the handshake state is
@@ -199,6 +206,8 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
                     return new SSLEngineResult(Status.OK, hsStatus, 0, 0);
                 }   // otherwise, need retransmission
             }
+        } else {
+            System.err.println("WRITERECORD, P1");
         }
 
         if (hsStatus == null) {
@@ -239,12 +248,18 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
             // Acquire the buffered to-be-delivered records or retransmissions.
             //
             // May have buffered records, or need retransmission if handshaking.
+            System.err.println("REDELIVER? "+conContext.outputRecord.isEmpty()+", hc = "+hc);
+            if (hc != null) {
+                System.err.println("REDEL, ert = "+hc.sslConfig.enableRetransmissions+", dtls = "+hc.sslContext.isDTLS()
+                +" status = "+hsStatus);
+            }
             if (!conContext.outputRecord.isEmpty() || (hc != null &&
                     hc.sslConfig.enableRetransmissions &&
                     hc.sslContext.isDTLS() &&
                     hsStatus == HandshakeStatus.NEED_UNWRAP)) {
                 ciphertext = encode(null, 0, 0,
                         dsts, dstsOffset, dstsLength);
+                System.err.println("CT "+ciphertext);
             }
 
             if (ciphertext == null && srcsRemains != 0) {
@@ -302,6 +317,7 @@ final class SSLEngineImpl extends SSLEngine implements SSLTransport {
 
         Ciphertext ciphertext;
         try {
+            System.err.println("[SSEI] srcsL = " + srcsLength+", dststL = "+dstsLength);
             ciphertext = conContext.outputRecord.encode(
                 srcs, srcsOffset, srcsLength, dsts, dstsOffset, dstsLength);
         } catch (SSLHandshakeException she) {

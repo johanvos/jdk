@@ -110,6 +110,8 @@ public class OpeningHandshake {
     private final String nonce;
 
     public OpeningHandshake(BuilderImpl b) {
+System.err.println("[WSH] openingHandshake");
+Thread.dumpStack();
         checkURI(b.getUri());
         Proxy proxy = proxyFor(b.getProxySelector(), b.getUri());
         checkPermissions(b, proxy);

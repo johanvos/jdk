@@ -71,9 +71,9 @@ Thread.dumpStack();
             byte[] answer = echConfig.produceExtension(chc.isInnerEch());
             if (!chc.innerEch) {
                 ClientHelloMessage outer = chc.initialClientHelloMsg;
-                ClientHelloMessage innerChm = new ClientHelloMessage(chc,
-                        chc.clientHelloVersion, outer.sessionId, outer.cipherSuites,
-                        chc.sslContext.getSecureRandom(), true);
+//                ClientHelloMessage innerChm = new ClientHelloMessage(chc,
+//                        chc.clientHelloVersion, outer.sessionId, outer.cipherSuites,
+//                        chc.sslContext.getSecureRandom(), true);
                 HPKEContext hpkeContext = chc.hpkeContext;
                 byte[] epb = hpkeContext.getEphemeralPublicKeyBytes();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();

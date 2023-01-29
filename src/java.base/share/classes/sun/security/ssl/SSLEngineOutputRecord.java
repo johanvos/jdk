@@ -292,9 +292,9 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
                 ByteBuffer temporary = destination.duplicate();
                 temporary.limit(temporary.position());
                 temporary.position(dstPos);
-                SSLLogger.fine("Raw write", temporary);
+                SSLLogger.fine("Raww write", temporary);
             }
-
+Thread.dumpStack();
             packetLeftSize -= destination.position() - dstPos;
 
             // remain the limit unchanged
@@ -318,9 +318,9 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
             // Please don't change the limit of the destination buffer.
             destination.put(SSLRecord.v2NoCipher);
             if (SSLLogger.isOn && SSLLogger.isOn("packet")) {
-                SSLLogger.fine("Raw write", SSLRecord.v2NoCipher);
+                SSLLogger.fine("Raw2 write", SSLRecord.v2NoCipher);
             }
-
+Thread.dumpStack();
             isTalkingToV2 = false;
 
             return new Ciphertext(ContentType.ALERT.id,
@@ -339,9 +339,10 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
                 }
 
                 if (SSLLogger.isOn("packet")) {
-                    SSLLogger.fine("Raw write", v2ClientHello);
+                    SSLLogger.fine("Raw3 write", v2ClientHello);
                 }
             }
+Thread.dumpStack();
 
             destination.put(v2ClientHello);
             v2ClientHello = null;
@@ -349,7 +350,7 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
             return new Ciphertext(ContentType.HANDSHAKE.id,
                    SSLHandshake.CLIENT_HELLO.id, -1L);
         }
-
+        System.err.println("FRAG? "+fragmenter);
         if (fragmenter != null) {
             return fragmenter.acquireCiphertext(destination);
         }
@@ -398,7 +399,8 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
                                                         //    1: HandshakeType
                                                         //    3: message length
             System.arraycopy(source, offset + 4, memo.fragment, 0, length - 4);
-
+            System.err.println("ADD MEMO "+memo);
+            Thread.dumpStack();
             handshakeMemos.add(memo);
         }
 
@@ -412,7 +414,8 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
 
             memo.fragment = new byte[1];
             memo.fragment[0] = 1;
-
+            System.err.println("ADD2 MEMO "+memo);
+            Thread.dumpStack();
             handshakeMemos.add(memo);
         }
 
@@ -427,7 +430,8 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
             memo.fragment = new byte[2];
             memo.fragment[0] = level;
             memo.fragment[1] = description;
-
+            System.err.println("ADD3 MEMO "+memo);
+            Thread.dumpStack();
             handshakeMemos.add(memo);
         }
 
@@ -441,10 +445,11 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
         }
 
         Ciphertext acquireCiphertext(ByteBuffer dstBuf) throws IOException {
+            System.err.println("FRAGEMPTY? "+isEmpty());
             if (isEmpty()) {
                 return null;
             }
-
+            System.err.println("HSMEMOS = " + handshakeMemos);
             RecordMemo memo = handshakeMemos.getFirst();
             HandshakeMemo hsMemo = null;
             if (memo.contentType == ContentType.HANDSHAKE.id) {
@@ -471,7 +476,9 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
                                     memo.encodeCipher.getExplicitNonceSize();
             dstBuf.position(dstContent);
 
+            System.err.println("HSMEMO?");
             if (hsMemo != null) {
+                System.err.println("HSMEMO1");
                 int remainingFragLen = fragLen;
                 while ((remainingFragLen > 0) && !handshakeMemos.isEmpty()) {
                     int memoFragLen = hsMemo.fragment.length;
@@ -521,7 +528,7 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
 
                 handshakeMemos.removeFirst();
             }
-
+            System.err.println("HSMEMO DONE");
             dstBuf.limit(dstBuf.position());
             dstBuf.position(dstContent);
 
@@ -547,8 +554,9 @@ final class SSLEngineOutputRecord extends OutputRecord implements SSLRecord {
                 ByteBuffer temporary = dstBuf.duplicate();
                 temporary.limit(temporary.position());
                 temporary.position(dstPos);
-                SSLLogger.fine("Raw write", temporary);
+                SSLLogger.fine("Raw4 write", temporary);
             }
+Thread.dumpStack();
 
             // remain the limit unchanged
             dstBuf.limit(dstLim);

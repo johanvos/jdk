@@ -702,6 +702,7 @@ public class SSLFlowDelegate {
 
         @Override
         protected void incoming(List<ByteBuffer> buffers, boolean complete) {
+System.err.println("[SSF] INCOMING buffer");
             assert complete ? buffers == Utils.EMPTY_BB_LIST : true;
             assert buffers != Utils.EMPTY_BB_LIST ? complete == false : true;
             if (complete) {
@@ -772,6 +773,7 @@ public class SSLFlowDelegate {
         }
 
         private void processData() {
+System.err.println("ONCEPROCESSDATA "+this);
             boolean completing = isCompleting();
 
             try {
@@ -781,7 +783,11 @@ public class SSLFlowDelegate {
                                 + hsTriggered() + ", needWrap:" + needWrap());
 
                 while (Utils.synchronizedRemaining(writeList) > 0 || hsTriggered() || needWrap()) {
-                    if (scheduler.isStopped()) return;
+System.err.println("Seems we need to process");
+                    if (scheduler.isStopped()) {
+System.err.println("ONCEPROCESSDATADONE4");
+return;
+}
                     ByteBuffer[] outbufs = writeList.toArray(Utils.EMPTY_BB_ARRAY);
                     EngineResult result = wrapBuffers(outbufs);
                     if (debugw.on())
@@ -794,8 +800,10 @@ public class SSLFlowDelegate {
                             // complete ALPN if not yet completed
                             setALPN();
                         }
-                        if (result.bytesProduced() <= 0)
+                        if (result.bytesProduced() <= 0) {
+System.err.println("ONCEPROCESSDATADONE3");
                             return;
+}
 
                         if (!completing && !completed) {
                             completing = this.completing = true;
@@ -820,16 +828,19 @@ public class SSLFlowDelegate {
                         if (!completing && needWrap()) {
                             continue;
                         } else {
+System.err.println("ONCEPROCESSDATADONE2");
                             return;
                         }
                     }
                 }
+System.err.println("Seems we're done processing");
                 if (completing && Utils.synchronizedRemaining(writeList) == 0) {
                     if (!completed) {
                         completed = true;
                         writeList.clear();
                         outgoing(Utils.EMPTY_BB_LIST, true);
                     }
+System.err.println("ONCEPROCESSDATADONE1");
                     return;
                 }
                 if (writeList.isEmpty() && needWrap()) {
@@ -840,6 +851,7 @@ public class SSLFlowDelegate {
                 errorCommon(ex);
                 handleError(ex);
             }
+System.err.println("ONCEPROCESSDATADONE");
         }
 
         // The SSLEngine insists on being given a buffer that is at least
@@ -868,6 +880,7 @@ public class SSLFlowDelegate {
             assert dst.hasRemaining() : "buffer has no remaining space: capacity=" + dst.capacity();
 
             while (true) {
+// HIER:
                 SSLEngineResult sslResult = engine.wrap(src, dst);
                 if (debugw.on()) debugw.log("SSLResult: " + sslResult);
                 switch (lastWrappedStatus = sslResult.getStatus()) {

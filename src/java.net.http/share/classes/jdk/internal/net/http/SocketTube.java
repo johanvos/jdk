@@ -438,9 +438,12 @@ final class SocketTube implements FlowTube {
                         channelDescr(), error);
             }
             completed = true;
-            readPublisher.signalError(error);
-            Flow.Subscription subscription = this.subscription;
-            if (subscription != null) subscription.cancel();
+System.err.println("SIGNALERROR!!!");
+error.printStackTrace();
+throw new RuntimeException ("game over");
+            // readPublisher.signalError(error);
+            // Flow.Subscription subscription = this.subscription;
+            // if (subscription != null) subscription.cancel();
         }
 
         // A repeatable WriteEvent which is paused after firing and can

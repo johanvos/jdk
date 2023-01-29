@@ -182,6 +182,7 @@ class PlainHttpConnection extends HttpConnection {
                     client().registerTimer(connectTimerEvent);
                 }
             }
+Thread.dumpStack();
 
             var localAddr = client().localAddress();
             if (localAddr != null) {

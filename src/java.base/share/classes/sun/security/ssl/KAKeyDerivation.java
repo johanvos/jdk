@@ -48,7 +48,7 @@ public class KAKeyDerivation implements SSLKeyDerivation {
             HandshakeContext context,
             PrivateKey localPrivateKey,
             PublicKey peerPublicKey) {
-        Thread.dumpStack();
+    //    Thread.dumpStack();
        SSLLogger.info("Create KAKeyDerivation with localsk ", localPrivateKey);
        SSLLogger.info("Create KAKeyDerivation with ppk ", peerPublicKey);
         this.algorithmName = algorithmName;

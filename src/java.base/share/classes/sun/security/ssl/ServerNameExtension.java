@@ -301,7 +301,6 @@ final class ServerNameExtension {
                 }
                 return;     // ignore the extension
             }
-
             // Parse the extension.
             CHServerNamesSpec spec = new CHServerNamesSpec(shc, buffer);
 

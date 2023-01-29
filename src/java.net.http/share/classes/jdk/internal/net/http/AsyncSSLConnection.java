@@ -46,20 +46,25 @@ class AsyncSSLConnection extends AbstractAsyncSSLConnection {
                        HttpClientImpl client,
                        String[] alpn) {
         super(addr, client, Utils.getServerName(addr), addr.getPort(), alpn);
+Thread.dumpStack();
         plainConnection = new PlainHttpConnection(addr, client);
         writePublisher = new PlainHttpPublisher();
     }
 
     @Override
     public CompletableFuture<Void> connectAsync(Exchange<?> exchange) {
+System.err.println("ASYNCSSL0");
+Thread.dumpStack();
         return plainConnection
                 .connectAsync(exchange)
                 .thenApply( unused -> {
                     // create the SSLTube wrapping the SocketTube, with the given engine
+System.err.println("ASYNCSSL1");
                     flow = new SSLTube(engine,
                                        client().theExecutor(),
                                        client().getSSLBufferSupplier()::recycle,
                                        plainConnection.getConnectionFlow());
+System.err.println("ASYNCSSL2");
                     return null; } );
     }
 

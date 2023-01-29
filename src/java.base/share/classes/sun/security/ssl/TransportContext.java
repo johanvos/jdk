@@ -247,6 +247,7 @@ final class TransportContext implements ConnectionContext {
         //
         // Need no kickstart message on server side unless the connection
         // has been established.
+        System.err.println("TCON, do we need to kickstart? hsh = " + handshakeContext+", neg = "+isNegotiated+", cm = "+sslConfig.isClientMode);
         if(isNegotiated || sslConfig.isClientMode) {
            handshakeContext.kickstart();
         }

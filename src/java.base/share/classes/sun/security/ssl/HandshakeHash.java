@@ -93,7 +93,6 @@ final class HandshakeHash {
 
     void receive(ByteBuffer input, int length) {
                 System.err.println("[HSH] receive2 "+length);
-Thread.dumpStack();
         if (input.hasArray()) {
             int from = input.position() + input.arrayOffset();
             int to = from + length;
@@ -127,12 +126,14 @@ Thread.dumpStack();
 
     void deliver(byte[] input) {
         System.err.println("HSH, deliver "+input.length+" bytes");
+        Thread.dumpStack();
         update();
         transcriptHash.update(input, 0, input.length);
     }
 
     void deliver(byte[] input, int offset, int length) {
         System.err.println("[HSH] deliver "+length+" bytes:");
+        Thread.dumpStack();
         System.err.println("[HSH] "+ HexFormat.ofDelimiter(":").formatHex(input));
         update();
         transcriptHash.update(input, offset, length);
@@ -178,7 +179,6 @@ Thread.dumpStack();
 
     void update() {
         System.err.println("[HSH] update!");
-        Thread.dumpStack();
         while (reserves.size() != 0) {
             byte[] holder = reserves.remove();
             transcriptHash.update(holder, 0, holder.length);
@@ -188,7 +188,6 @@ Thread.dumpStack();
 
     byte[] digest() {
         System.err.println("[HSH] digest, th = "+transcriptHash+" of class "+transcriptHash.getClass());
-        Thread.dumpStack();
         // Note that the reserve handshake message may be not a part of
         // the expected digest.
         return transcriptHash.digest();
@@ -602,7 +601,6 @@ Thread.dumpStack();
 
         T13HandshakeHash(CipherSuite cipherSuite) {
             System.err.println("[T13HSH] created with cipherSuite "+cipherSuite);
-            Thread.dumpStack();
             MessageDigest md;
             try {
                 md = MessageDigest.getInstance(cipherSuite.hashAlg.name);
@@ -621,7 +619,6 @@ Thread.dumpStack();
 
         @Override
         public void update(byte[] input, int offset, int length) {
-            Thread.dumpStack();
             System.err.println("[HSH] updating with "+length+" bytes");
             transcriptHash.update(input, offset, length);
         }
@@ -645,7 +642,6 @@ Thread.dumpStack();
 
         CloneableHash(MessageDigest md) {
             this.md = md;
-            Thread.dumpStack();
             System.err.println("Create CLONHAS at " + this+", md = "+md);
         }
 
@@ -660,7 +656,6 @@ Thread.dumpStack();
         public byte[] digest() {
             try {
                 System.err.println("CLONHAS, digest asked for "+this);
-                Thread.dumpStack();
                 byte[] answer = ((MessageDigest)md.clone()).digest();
                 System.err.println("CLONHASDIGEST = "+HexFormat.ofDelimiter(":").formatHex(answer));
                 return answer;

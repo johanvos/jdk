@@ -102,15 +102,20 @@ class ClientHandshakeContext extends HandshakeContext {
     ClientHandshakeContext(SSLContextImpl sslContext,
             TransportContext conContext) throws IOException {
         super(sslContext, conContext);
+        Thread.dumpStack();
     }
 
     @Override
     void kickstart() throws IOException {
+        System.err.println("CHCKICK! "+kickstartMessageDelivered);
         if (kickstartMessageDelivered) {
             return;
         }
 
         SSLHandshake.kickstart(this);
+
         kickstartMessageDelivered = true;
+                System.err.println("CHCKICKDONE! "+kickstartMessageDelivered);
+
     }
 }

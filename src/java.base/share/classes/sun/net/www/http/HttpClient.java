@@ -267,6 +267,8 @@ public class HttpClient extends NetworkClient {
     }
 
     protected HttpClient(URL url, Proxy p, int to) throws IOException {
+System.err.println("[HTTPCLIENT] construct");
+Thread.dumpStack();
         proxy = (p == null) ? Proxy.NO_PROXY : p;
         this.host = url.getHost();
         this.url = url;
@@ -332,6 +334,8 @@ public class HttpClient extends NetworkClient {
     public static HttpClient New(URL url, Proxy p, int to, boolean useCache,
         HttpURLConnection httpuc) throws IOException
     {
+System.err.println("[HTTPCLIENT] construct");
+Thread.dumpStack();
         if (p == null) {
             p = Proxy.NO_PROXY;
         }
@@ -529,6 +533,8 @@ public class HttpClient extends NetworkClient {
      */
     @Override
     public void openServer(String server, int port) throws IOException {
+System.err.println("[HTTPCLIENT] openServer");
+Thread.dumpStack();
         serverSocket = doConnect(server, port);
         try {
             OutputStream out = serverSocket.getOutputStream();

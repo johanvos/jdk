@@ -897,7 +897,18 @@ final class ServerHello {
                 System.err.println("chrandom was "+chc.clientHelloRandom+ " and will be changed to "+chc.innerClientHelloRandom);
                 chc.clientHelloRandom = chc.innerClientHelloRandom;
                 chc.initialClientHelloMsg = chc.innerClientHelloMessage;
-                chc.innerClientHelloMessage.write(chc.handshakeOutput);
+                System.err.println("REWRITE");
+           //     chc.innerClientHelloMessage.write(chc.handshakeOutput);
+
+                HandshakeOutStream myhos = new HandshakeOutStream(null);
+                myhos.write(chc.innerClientHelloMessage.handshakeType().id);
+                myhos.putInt24(chc.innerClientHelloMessage.messageLength());
+
+                chc.innerClientHelloMessage.send(myhos);
+          //      myhos.toByteArray();
+                chc.handshakeHash.receive(myhos.toByteArray());
+        //chc.innerClientHelloMessage.messageLength();
+                System.err.println("REWRITE DONE");
                 chc.handshakeHash.receive(last);
             }
             }

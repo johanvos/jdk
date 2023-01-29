@@ -138,6 +138,8 @@ class SocketChannelImpl
 
     SocketChannelImpl(SelectorProvider sp, ProtocolFamily family) throws IOException {
         super(sp);
+        Thread.dumpStack();
+        System.err.println("CREATEDSCI "+this);
         Objects.requireNonNull(family, "'family' is null");
         if ((family != INET) && (family != INET6) && (family != UNIX)) {
             throw new UnsupportedOperationException("Protocol family not supported");
@@ -164,6 +166,9 @@ class SocketChannelImpl
         throws IOException
     {
         super(sp);
+        
+        Thread.dumpStack();
+        System.err.println("CREATEDSCImpl "+this+" with remoteAddress = "+remoteAddress);
         this.family = family;
         this.fd = fd;
         this.fdVal = IOUtil.fdVal(fd);
@@ -561,8 +566,9 @@ class SocketChannelImpl
     public long write(ByteBuffer[] srcs, int offset, int length)
         throws IOException
     {
+        System.err.println("[SCI] need to write "+length+" bytes on "+this);
         Objects.checkFromIndexSize(offset, length, srcs.length);
-
+Thread.dumpStack();
         writeLock.lock();
         try {
             ensureOpenAndConnected();
@@ -572,6 +578,7 @@ class SocketChannelImpl
                 beginWrite(blocking);
                 configureSocketNonBlockingIfVirtualThread();
                 n = IOUtil.write(fd, srcs, offset, length, nd);
+                System.err.println("[SCI] did write "+n);
                 if (blocking) {
                     while (IOStatus.okayToRetry(n) && isOpen()) {
                         park(Net.POLLOUT);

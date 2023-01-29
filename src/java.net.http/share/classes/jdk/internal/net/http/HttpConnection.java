@@ -79,7 +79,13 @@ abstract class HttpConnection implements Closeable {
     private final long id;
 
     HttpConnection(InetSocketAddress address, HttpClientImpl client) {
-        this.address = address;
+        String outerHost = System.getProperty("ech.outer");
+        System.err.println("HttpConnection GOT AN OUTER HOST? " + outerHost);
+        if (outerHost != null) {
+            this.address = new InetSocketAddress(outerHost, address.getPort());
+        } else {
+            this.address = address;
+        }
         this.client = client;
         trailingOperations = new TrailingOperations();
         this.id = newConnectionId(client);

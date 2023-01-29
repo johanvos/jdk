@@ -105,6 +105,7 @@ final class ClientHello {
                 int clientVersion, SessionId sessionId,
                 List<CipherSuite> cipherSuites, SecureRandom generator, boolean inner) {
             super(handshakeContext);
+            Thread.dumpStack();
             this.inner = inner;
             this.isDTLS = handshakeContext.sslContext.isDTLS();
 
