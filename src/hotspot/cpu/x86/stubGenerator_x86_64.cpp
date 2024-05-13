@@ -4312,7 +4312,6 @@ void StubGenerator::generate_compiler_stubs() {
     StubRoutines::_base64_encodeBlock = generate_base64_encodeBlock();
     StubRoutines::_base64_decodeBlock = generate_base64_decodeBlock();
   }
-
 #ifdef COMPILER2
   if (UseMultiplyToLenIntrinsic) {
     StubRoutines::_multiplyToLen = generate_multiplyToLen();
