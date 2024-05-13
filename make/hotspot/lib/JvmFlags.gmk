@@ -51,10 +51,11 @@ JVM_CFLAGS_INCLUDES += \
     -I$(TOPDIR)/src/java.base/share/native/libjimage \
     #
 
-ifeq ($(call isTargetOs, android), true)
+ifeq ($(call isTargetOs, android ios), true)
   JVM_CFLAGS_INCLUDES += \
     -I$(TOPDIR)/src/hotspot/os_cpu/linux_aarch64 \
     -I$(TOPDIR)/src/hotspot/os/linux \
+    -I$(TOPDIR)/src/hotspot/os/bsd \
     #
 endif
 

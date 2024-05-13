@@ -47,6 +47,12 @@ ifeq ($(OPENJDK_TARGET_OS), android)
             $(TOPDIR)/src/$(strip $1)/linux/native/$(strip $2)))
 endif
 
+ifeq ($(OPENJDK_TARGET_OS), ios)
+    FindSrcDirsForComponent += \
+        $(call uniq, $(wildcard \
+            $(TOPDIR)/src/$(strip $1)/macosx/native/$(strip $2)))
+endif
+
 # Find a library. Used for declaring dependencies on libraries in different
 # modules.
 # Param 1 - module name
