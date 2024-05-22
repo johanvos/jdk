@@ -356,11 +356,13 @@ void Arguments::process_sun_java_launcher_properties(JavaVMInitArgs* args) {
 
 // Initialize system properties key and value.
 void Arguments::init_system_properties() {
+fprintf(stderr, "[JVDBG] init_system_properties 0\n");
 
   // Set up _boot_class_path which is not a property but
   // relies heavily on argument processing and the jdk.boot.class.path.append
   // property. It is used to store the underlying boot class path.
   _boot_class_path = new PathString(nullptr);
+fprintf(stderr, "[JVDBG] init_system_properties 1\n");
 
   PropertyList_add(&_system_properties, new SystemProperty("java.vm.specification.name",
                                                            "Java Virtual Machine Specification",  false));
@@ -374,6 +376,7 @@ void Arguments::init_system_properties() {
   // Following are JVMTI agent writable properties.
   // Properties values are set to nullptr and they are
   // os specific they are initialized in os::init_system_properties_values().
+fprintf(stderr, "[JVDBG] init_system_properties 2\n");
   _sun_boot_library_path = new SystemProperty("sun.boot.library.path", nullptr,  true);
   _java_library_path = new SystemProperty("java.library.path", nullptr,  true);
   _java_home =  new SystemProperty("java.home", nullptr,  true);
@@ -382,6 +385,7 @@ void Arguments::init_system_properties() {
   // It can only be set by either:
   //    - -Xbootclasspath/a:
   //    - AddToBootstrapClassLoaderSearch during JVMTI OnLoad phase
+fprintf(stderr, "[JVDBG] init_system_properties 3\n");
   _jdk_boot_class_path_append = new SystemProperty("jdk.boot.class.path.append", nullptr, false, true);
 
   // Add to System Property list.
@@ -393,6 +397,7 @@ void Arguments::init_system_properties() {
   PropertyList_add(&_system_properties, _vm_info);
 
   // Set OS specific system properties values
+fprintf(stderr, "[JVDBG] init_system_properties 5\n");
   os::init_system_properties_values();
 }
 

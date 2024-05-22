@@ -3523,6 +3523,7 @@ DT_RETURN_MARK_DECL(CreateJavaVM, jint
                     , HOTSPOT_JNI_CREATEJAVAVM_RETURN(_ret_ref));
 
 static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
+fprintf(stderr, "[JVDBG] JNI_CreateJavaVM 0\n");
   HOTSPOT_JNI_CREATEJAVAVM_ENTRY((void **) vm, penv, args);
 
   jint result = JNI_ERR;
@@ -3542,6 +3543,7 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
     assert(c == &b && d == &a, "Atomic::xchg() works");
   }
 #endif // ZERO && ASSERT
+fprintf(stderr, "[JVDBG] JNI_CreateJavaVM 1\n");
 
   // At the moment it's only possible to have one Java VM,
   // since some of the runtime state is in global variables.
@@ -3577,9 +3579,12 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
    * JNI_CreateJavaVM will immediately fail using the above logic.
    */
   bool can_try_again = true;
+fprintf(stderr, "[JVDBG] JNI_CreateJavaVM 2\n");
 
   result = Threads::create_vm((JavaVMInitArgs*) args, &can_try_again);
+fprintf(stderr, "[JVDBG] JNI_CreateJavaVM 3, result = %d\n", result);
   if (result == JNI_OK) {
+fprintf(stderr, "[JVDBG] JNI_CreateJavaVM 4\n");
     JavaThread *thread = JavaThread::current();
     assert(!thread->has_pending_exception(), "should have returned not OK");
     // thread is thread_in_vm here
@@ -3604,6 +3609,7 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
       }
     }
 #endif
+fprintf(stderr, "[JVDBG] JNI_CreateJavaVM 1\n");
 
     // Notify JVMTI
     if (JvmtiExport::should_post_thread_life()) {
@@ -3626,6 +3632,7 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
     ThreadStateTransition::transition_from_vm(thread, _thread_in_native);
     MACOS_AARCH64_ONLY(thread->enable_wx(WXExec));
   } else {
+fprintf(stderr, "[JVDBG] JNI_CreateJavaVM 5\n");
     // If create_vm exits because of a pending exception, exit with that
     // exception.  In the future when we figure out how to reclaim memory,
     // we may be able to exit with JNI_ERR and allow the calling application
@@ -3658,6 +3665,7 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
   // Flush stdout and stderr before exit.
   fflush(stdout);
   fflush(stderr);
+fprintf(stderr, "[JVDBG] JNI_CreateJavaVM 2\n");
 
   return result;
 

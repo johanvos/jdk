@@ -926,6 +926,8 @@ void ClassLoader::load_java_library() {
 }
 
 void ClassLoader::load_jimage_library() {
+fprintf(stderr, "[JVDBG] load_jimage_library 0 - ignore\n");
+#ifndef STATIC_BUILD
   assert(JImageOpen == nullptr, "should not load jimage library twice");
   char path[JVM_MAXPATHLEN];
   char ebuf[1024];
@@ -933,14 +935,22 @@ void ClassLoader::load_jimage_library() {
   if (os::dll_locate_lib(path, sizeof(path), Arguments::get_dll_dir(), "jimage")) {
     handle = os::dll_load(path, ebuf, sizeof ebuf);
   }
+fprintf(stderr, "[JVDBG] load_jimage_library 1\n");
   if (handle == nullptr) {
     vm_exit_during_initialization("Unable to load jimage library", path);
   }
 
+fprintf(stderr, "[JVDBG] load_jimage_library 2\n");
   JImageOpen = CAST_TO_FN_PTR(JImageOpen_t, dll_lookup(handle, "JIMAGE_Open", path));
   JImageClose = CAST_TO_FN_PTR(JImageClose_t, dll_lookup(handle, "JIMAGE_Close", path));
   JImageFindResource = CAST_TO_FN_PTR(JImageFindResource_t, dll_lookup(handle, "JIMAGE_FindResource", path));
   JImageGetResource = CAST_TO_FN_PTR(JImageGetResource_t, dll_lookup(handle, "JIMAGE_GetResource", path));
+#else
+  JImageOpen = CAST_TO_FN_PTR(JImageOpen_t, dlsym(RTLD_DEFAULT, "JIMAGE_Open"));
+  JImageClose = CAST_TO_FN_PTR(JImageClose_t, dlsym(RTLD_DEFAULT, "JIMAGE_Close"));
+  JImageFindResource = CAST_TO_FN_PTR(JImageFindResource_t, dlsym(RTLD_DEFAULT, "JIMAGE_FindResource"));
+  JImageGetResource = CAST_TO_FN_PTR(JImageGetResource_t, dlsym(RTLD_DEFAULT, "JIMAGE_GetResource"));
+#endif
 }
 
 int ClassLoader::crc32(int crc, const char* buf, int len) {
@@ -1360,18 +1370,24 @@ static char* lookup_vm_resource(JImageFile *jimage, const char *jimage_version, 
 
 // Lookup VM options embedded in the modules jimage file
 char* ClassLoader::lookup_vm_options() {
+fprintf(stderr, "[JVDBG] CL, lookup_vm_options 0\n");
   jint error;
   char modules_path[JVM_MAXPATHLEN];
   const char* fileSep = os::file_separator();
+fprintf(stderr, "[JVDBG] CL, lookup_vm_options 1\n");
 
   // Initialize jimage library entry points
   load_jimage_library();
+fprintf(stderr, "[JVDBG] CL, lookup_vm_options 2\n");
 
   jio_snprintf(modules_path, JVM_MAXPATHLEN, "%s%slib%smodules", Arguments::get_java_home(), fileSep, fileSep);
+fprintf(stderr, "[JVDBG] CL, lookup_vm_options 3\n");
   JImage_file =(*JImageOpen)(modules_path, &error);
+fprintf(stderr, "[JVDBG] CL, lookup_vm_options 4\n");
   if (JImage_file == nullptr) {
     return nullptr;
   }
+fprintf(stderr, "[JVDBG] CL, lookup_vm_options 5\n");
 
   const char *jimage_version = get_jimage_version_string();
   char *options = lookup_vm_resource(JImage_file, jimage_version, "jdk/internal/vm/options");

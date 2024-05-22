@@ -103,6 +103,9 @@ AC_DEFUN([FLAGS_SETUP_NMFLAGS],
   if test "x$OPENJDK_TARGET_OS" = xaix; then
     NMFLAGS="-X64"
   fi
+  if test "x$OPENJDK_TARGET_OS" = xmacosx; then
+    NMFLAGS="-m"
+  fi
 
   AC_SUBST(NMFLAGS)
 ])

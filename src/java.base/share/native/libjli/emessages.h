@@ -96,7 +96,7 @@
 #define JRE_ERROR5      "Error: Failed to start a %d-bit JVM process from a %d-bit JVM."
 #define JRE_ERROR6      "Error: Verify all necessary Java SE components have been installed."
 #define JRE_ERROR7      "Error: Either 64-bit processes are not supported by this platform\nor the 64-bit components have not been installed."
-#define JRE_ERROR8      "Error: could not find "
+#define JRE_ERROR8      "Error: could Not find "
 #define JRE_ERROR9      "Error: Unable to resolve %s"
 #define JRE_ERROR10     "Error: Unable to resolve current executable"
 #define JRE_ERROR11     "Error: Path length exceeds maximum length (PATH_MAX)"

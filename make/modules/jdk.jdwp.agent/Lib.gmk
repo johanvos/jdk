@@ -72,7 +72,7 @@ TARGETS += $(BUILD_LIBJDWP)
 ################################################################################
 # Setup static build symbols
 
-ifeq ($(STATIC_BUILD), true)
+ifeq ($(STATIC_BUILD), ttrue)
   STATIC_SYMBOLS_DIR := $(SUPPORT_OUTPUTDIR)/modules_libs/jdk.jdwp.agent
   JDK_JDWP_AGENT_EXPORT_SYMBOLS_SRC := \
       $(STATIC_SYMBOLS_DIR)/$(LIBRARY_PREFIX)dt_socket.symbols \

@@ -115,11 +115,15 @@ define CreateStaticLibrary
 	    $$($1_AR) $$(ARFLAGS) -r -cs $$($1_TARGET) \
 	        $$($1_AR_OBJ_ARG) $$($1_RES))
         ifeq ($(STATIC_BUILD), true)
+          EXPORT_SYMBOL_FILE := $(STATIC_SYMBOLS_DIR)/$$(basename $$(@F)).symbols; \
 	  $(RM) $$(@D)/$$(basename $$(@F)).symbols; \
-	  $(ECHO) "Getting symbols from nm"; \
-	  $(NM) $(NMFLAGS) -m $$($1_TARGET) | $(GREP)  "__TEXT" | \
-	      $(EGREP) -v "non-external|private extern|__TEXT,__eh_frame" | \
-	      $(SED) -e  's/.* //' > $$(@D)/$$(basename $$(@F)).symbols
+	  $(ECHO) "will get symbols from nm, $(NM) $(NMFLAGS) $$($1_TARGET) | $(GREP) __TEXT | $(EGREP) -v  non-external|private extern|__TEXT,__eh_frame > $$(@D)/$$(basename $$(@F)).symbols"; \
+	  $(ECHO) "Getting symbols from nm into $$(@D)/$$(basename $$(@F)).symbols"; \
+          touch $$(@D)/$$(basename $$(@F)).symbols; \
+	  $(ECHO) "$(NM) $(NMFLAGS) $$($1_TARGET) | $(GREP)  __TEXT | \
+	      $(EGREP) -v non-external|private extern|__TEXT,__eh_frame \
+	      > $$(@D)/$$(basename $$(@F)).symbols"; \
+	  $(ECHO) "Done Getting symbols from nm"
         endif
 endef
 

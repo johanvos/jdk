@@ -299,6 +299,7 @@ CreateExecutionEnvironment(int *pargc, char ***pargv,
 
     char * jvmtype = NULL;
     char **argv = *pargv;
+fprintf(stderr, "[JAVA_MD] 0\n");
 
 #ifdef SETENV_REQUIRED
     jboolean mustsetenv = JNI_FALSE;
@@ -312,13 +313,21 @@ CreateExecutionEnvironment(int *pargc, char ***pargv,
 
     /* Compute/set the name of the executable */
     SetExecname(*pargv);
+fprintf(stderr, "[JAVA_MD] 1\n");
 
     /* Check to see if the jvmpath exists */
     /* Find out where the JRE is that we will be using. */
+#ifdef STATIC_BUILD
+fprintf(stderr, "getjrepath...\n");
+    if (!GetJREPath(jrepath, so_jrepath, JNI_TRUE)) {
+#else
     if (!GetJREPath(jrepath, so_jrepath, JNI_FALSE)) {
+#endif
+fprintf(stderr, "[JAVA_MD] 1a\n");
         JLI_ReportErrorMessage(JRE_ERROR1);
         exit(2);
     }
+fprintf(stderr, "[JAVA_MD] 2\n");
     JLI_Snprintf(jvmcfg, so_jvmcfg, "%s%slib%sjvm.cfg",
             jrepath, FILESEP, FILESEP);
     /* Find the specified JVM type */
@@ -327,17 +336,23 @@ CreateExecutionEnvironment(int *pargc, char ***pargv,
         exit(1);
     }
 
+fprintf(stderr, "[JAVA_MD] 3\n");
     jvmpath[0] = '\0';
     jvmtype = CheckJvmType(pargc, pargv, JNI_FALSE);
     if (JLI_StrCmp(jvmtype, "ERROR") == 0) {
         JLI_ReportErrorMessage(CFG_ERROR9);
         exit(4);
     }
+fprintf(stderr, "[JAVA_MD] 4\n");
 
+#ifndef STATIC_BUILD
     if (!GetJVMPath(jrepath, jvmtype, jvmpath, so_jvmpath)) {
+fprintf(stderr, "Mizerie mizerie!\n");
         JLI_ReportErrorMessage(CFG_ERROR8, jvmtype, jvmpath);
         exit(4);
     }
+#endif
+fprintf(stderr, "[JAVA_MD] 5\n");
     /*
      * we seem to have everything we need, so without further ado
      * we return back, otherwise proceed to set the environment.
@@ -526,8 +541,13 @@ GetJREPath(char *path, jint pathsize, jboolean speculative)
         }
     }
 #endif
+#ifdef STATIC_BUILD
+    fprintf(stderr, "[JAVA_MD] static build\n");
+    return JNI_TRUE;
+#endif
 
     if (!speculative)
+fprintf(stderr, "Mizerie!\n");
       JLI_ReportErrorMessage(JRE_ERROR8 JAVA_DLL);
     return JNI_FALSE;
 }
@@ -536,6 +556,7 @@ jboolean
 LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
 {
     void *libjvm;
+fprintf(stderr, "[LOADJAVAVM] 0\n");
 
     JLI_TraceLauncher("JVM path is %s\n", jvmpath);
 
@@ -545,6 +566,7 @@ LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
         JLI_ReportErrorMessage(DLL_ERROR2, jvmpath, dlerror());
         return JNI_FALSE;
     }
+fprintf(stderr, "[LOADJAVAVM] 1\n");
 
     ifn->CreateJavaVM = (CreateJavaVM_t)
         dlsym(libjvm, "JNI_CreateJavaVM");
@@ -552,6 +574,7 @@ LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
         JLI_ReportErrorMessage(DLL_ERROR2, jvmpath, dlerror());
         return JNI_FALSE;
     }
+fprintf(stderr, "[LOADJAVAVM] 2\n");
 
     ifn->GetDefaultJavaVMInitArgs = (GetDefaultJavaVMInitArgs_t)
         dlsym(libjvm, "JNI_GetDefaultJavaVMInitArgs");
@@ -567,6 +590,7 @@ LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
         return JNI_FALSE;
     }
 
+fprintf(stderr, "[LOADJAVAVM] 3\n");
     return JNI_TRUE;
 }
 
@@ -717,7 +741,9 @@ JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int argc, char **argv,
         int mode, char *what, int ret)
 {
+    fprintf(stderr, "[JVMInit] 0\n");
     ShowSplashScreen();
+    fprintf(stderr, "[JVMInit] 1\n");
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
 }
 

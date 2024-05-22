@@ -514,6 +514,7 @@ void os::Linux::initialize_system_info() {
 }
 
 void os::init_system_properties_values() {
+fprintf(stderr, "[JVDBG] init_system_properties_values 0\n");
   // The next steps are taken in the product version:
   //
   // Obtain the JAVA_HOME value from the location of libjvm.so.
@@ -559,6 +560,7 @@ void os::init_system_properties_values() {
 // Base path of extensions installed on the system.
 #define SYS_EXT_DIR     "/usr/java/packages"
 #define EXTENSIONS_DIR  "/lib/ext"
+fprintf(stderr, "[JVDBG] init_system_properties_values 1\n");
 
   // Buffer that fits several snprintfs.
   // Note that the space for the colon and the trailing null are provided
@@ -572,13 +574,16 @@ void os::init_system_properties_values() {
   {
     char *pslash;
     os::jvm_path(buf, bufsize);
+fprintf(stderr, "[JVDBG] jvm_path = %s\n", buf);
 
     // Found the full path to libjvm.so.
     // Now cut the path to <java_home>/jre if we can.
+#ifndef STATIC_BUILD // we have a binary with libjvm (same level)
     pslash = strrchr(buf, '/');
     if (pslash != nullptr) {
       *pslash = '\0';            // Get rid of /libjvm.so.
     }
+#endif
     pslash = strrchr(buf, '/');
     if (pslash != nullptr) {
       *pslash = '\0';            // Get rid of /{client|server|hotspot}.
@@ -592,9 +597,12 @@ void os::init_system_properties_values() {
       }
     }
     Arguments::set_java_home(buf);
+fprintf(stderr, "[JVDBG] init_system_properties_values 2, java_home = %s\n", buf);
     if (!set_boot_path('/', ':')) {
+fprintf(stderr, "[JVDBG] init_system_properties_values 3\n");
       vm_exit_during_initialization("Failed setting boot class path.", nullptr);
     }
+fprintf(stderr, "[JVDBG] init_system_properties_values 4\n");
   }
 
   // Where to look for native libraries.

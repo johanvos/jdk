@@ -1407,8 +1407,10 @@ FILE* os::fopen(const char* path, const char* mode) {
 }
 
 bool os::set_boot_path(char fileSep, char pathSep) {
+fprintf(stderr, "[JVDBG] set_boot_path 0 \n");
   const char* home = Arguments::get_java_home();
   int home_len = (int)strlen(home);
+fprintf(stderr, "[JVDBG] set_boot_path 1, home= %s \n", home);
 
   struct stat st;
 
@@ -1422,9 +1424,11 @@ bool os::set_boot_path(char fileSep, char pathSep) {
     return true;
   }
   FREE_C_HEAP_ARRAY(char, jimage);
+fprintf(stderr, "[JVDBG] set_boot_path 3 \n");
 
   // check if developer build with exploded modules
   char* base_classes = format_boot_path("%/modules/" JAVA_BASE_NAME, home, home_len, fileSep, pathSep);
+fprintf(stderr, "[JVDBG] base_classes= %s \n", base_classes);
   if (base_classes == nullptr) return false;
   if (os::stat(base_classes, &st) == 0) {
     Arguments::set_boot_class_path(base_classes, false);
@@ -1432,6 +1436,7 @@ bool os::set_boot_path(char fileSep, char pathSep) {
     return true;
   }
   FREE_C_HEAP_ARRAY(char, base_classes);
+fprintf(stderr, "[JVDBG] set_boot_path 4 \n");
 
   return false;
 }

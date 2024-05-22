@@ -147,7 +147,7 @@ endif
 
 ################################################################################
 # Create the symbols file for static builds.
-ifeq ($(STATIC_BUILD), true)
+ifeq ($(STATIC_BUILD), ttrue)
   STATIC_SYMBOLS_DIR := $(SUPPORT_OUTPUTDIR)/modules_libs/java.base
   JAVA_BASE_EXPORT_SYMBOLS_SRC := \
       $(STATIC_SYMBOLS_DIR)/$(LIBRARY_PREFIX)jli.symbols \

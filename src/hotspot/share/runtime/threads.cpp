@@ -411,6 +411,7 @@ void Threads::initialize_jsr292_core_classes(TRAPS) {
 }
 
 jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
+fprintf(stderr, "[JVDBG] create_vm 0\n");
   extern void JDK_Version_init();
 
   // Preinitialize version info.
@@ -430,34 +431,42 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Initialize the os module
   os::init();
+fprintf(stderr, "[JVDBG] create_vm 1\n");
 
   MACOS_AARCH64_ONLY(os::current_thread_enable_wx(WXWrite));
 
   // Record VM creation timing statistics
   TraceVmCreationTime create_vm_timer;
   create_vm_timer.start();
+fprintf(stderr, "[JVDBG] create_vm 1a\n");
 
   // Initialize system properties.
   Arguments::init_system_properties();
+fprintf(stderr, "[JVDBG] create_vm 1b\n");
 
   // So that JDK version can be used as a discriminator when parsing arguments
   JDK_Version_init();
+fprintf(stderr, "[JVDBG] create_vm 1c\n");
 
   // Update/Initialize System properties after JDK version number is known
   Arguments::init_version_specific_system_properties();
+fprintf(stderr, "[JVDBG] create_vm 1d\n");
 
   // Make sure to initialize log configuration *before* parsing arguments
   LogConfiguration::initialize(create_vm_timer.begin_time());
+fprintf(stderr, "[JVDBG] create_vm 1e\n");
 
   // Parse arguments
   // Note: this internally calls os::init_container_support()
   jint parse_result = Arguments::parse(args);
+fprintf(stderr, "[JVDBG] create_vm 1f\n");
   if (parse_result != JNI_OK) return parse_result;
 
   // Initialize NMT right after argument parsing to keep the pre-NMT-init window small.
   MemTracker::initialize();
 
   os::init_before_ergo();
+fprintf(stderr, "[JVDBG] create_vm 2\n");
 
   jint ergo_result = Arguments::apply_ergo();
   if (ergo_result != JNI_OK) return ergo_result;
@@ -494,9 +503,11 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 #endif // CAN_SHOW_REGISTERS_ON_ASSERT
 
   SafepointMechanism::initialize();
+fprintf(stderr, "[JVDBG] create_vm 3\n");
 
   jint adjust_after_os_result = Arguments::adjust_after_os();
   if (adjust_after_os_result != JNI_OK) return adjust_after_os_result;
+fprintf(stderr, "[JVDBG] create_vm 4\n");
 
   // Initialize output stream logging
   ostream_init_log();
@@ -507,9 +518,11 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Initialize Threads state
   _number_of_threads = 0;
   _number_of_non_daemon_threads = 0;
+fprintf(stderr, "[JVDBG] create_vm 5\n");
 
   // Initialize global data structures and create system classes in heap
   vm_init_globals();
+fprintf(stderr, "[JVDBG] create_vm 6\n");
 
 #if INCLUDE_JVMCI
   if (JVMCICounterSize > 0) {
@@ -522,6 +535,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Initialize OopStorage for threadObj
   JavaThread::_thread_oop_storage = OopStorageSet::create_strong("Thread OopStorage", mtThread);
+fprintf(stderr, "[JVDBG] create_vm 7\n");
 
   // Attach the main thread to this os thread
   JavaThread* main_thread = new JavaThread();
@@ -531,6 +545,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   main_thread->record_stack_base_and_size();
   main_thread->register_thread_stack_with_NMT();
   main_thread->set_active_handles(JNIHandleBlock::allocate_block());
+fprintf(stderr, "[JVDBG] create_vm 8\n");
   MACOS_AARCH64_ONLY(main_thread->init_wx());
 
   if (!main_thread->set_as_starting_thread()) {
@@ -540,22 +555,28 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     *canTryAgain = false; // don't let caller call JNI_CreateJavaVM again
     return JNI_ENOMEM;
   }
+fprintf(stderr, "[JVDBG] create_vm 9a\n");
 
   // Enable guard page *after* os::create_main_thread(), otherwise it would
   // crash Linux VM, see notes in os_linux.cpp.
   main_thread->stack_overflow_state()->create_stack_guard_pages();
+fprintf(stderr, "[JVDBG] create_vm 9b\n");
 
   // Initialize Java-Level synchronization subsystem
   ObjectMonitor::Initialize();
+fprintf(stderr, "[JVDBG] create_vm 9c\n");
   ObjectSynchronizer::initialize();
+fprintf(stderr, "[JVDBG] create_vm 9d\n");
 
   // Initialize global modules
   jint status = init_globals();
+fprintf(stderr, "[JVDBG] create_vm 9e\n");
   if (status != JNI_OK) {
     main_thread->smr_delete();
     *canTryAgain = false; // don't let caller call JNI_CreateJavaVM again
     return status;
   }
+fprintf(stderr, "[JVDBG] create_vm 9f\n");
 
   // Create WatcherThread as soon as we can since we need it in case
   // of hangs during error reporting.
@@ -569,6 +590,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     Threads::add(main_thread);
   }
 
+fprintf(stderr, "[JVDBG] create_vm 10\n");
   status = init_globals2();
   if (status != JNI_OK) {
     Threads::remove(main_thread, false);
@@ -590,6 +612,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Any JVMTI raw monitors entered in onload will transition into
   // real raw monitor. VM is setup enough here for raw monitor enter.
   JvmtiExport::transition_pending_onload_raw_monitors();
+fprintf(stderr, "[JVDBG] create_vm 11\n");
 
   // Create the VMThread
   { TraceTime timer("Start VMThread", TRACETIME_LOG(Info, startuptime));
@@ -619,6 +642,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     VM_Verify verify_op;
     VMThread::execute(&verify_op);
   }
+fprintf(stderr, "[JVDBG] create_vm 12\n");
 
   // We need this to update the java.vm.info property in case any flags used
   // to initially define it have been changed. This is needed for both CDS
@@ -659,6 +683,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   MutexLockerImpl::post_initialize();
 
   HOTSPOT_VM_INIT_END();
+fprintf(stderr, "[JVDBG] create_vm 13\n");
 
   // record VM initialization completion time
 #if INCLUDE_MANAGEMENT
@@ -692,6 +717,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
 
   // Start the monitor deflation thread:
   MonitorDeflationThread::initialize();
+fprintf(stderr, "[JVDBG] create_vm 14\n");
 
   // initialize compiler(s)
 #if defined(COMPILER1) || COMPILER2_OR_JVMCI
@@ -765,6 +791,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     vm_exit_during_initialization("ClassLoader::initialize_module_path() failed unexpectedly");
   }
 #endif
+fprintf(stderr, "[JVDBG] create_vm 15\n");
 
 #if INCLUDE_JVMCI
   if (force_JVMCI_initialization) {
@@ -827,6 +854,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   if (CDSConfig::is_dumping_static_archive()) {
     MetaspaceShared::preload_and_dump();
   }
+fprintf(stderr, "[JVDBG] create_vm 9\n");
 
   return JNI_OK;
 }

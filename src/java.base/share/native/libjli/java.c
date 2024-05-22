@@ -238,6 +238,7 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
         jint ergo                               /* unused */
 )
 {
+fprintf(stderr, "[JLI_Launch] 0\n");
     int mode = LM_UNKNOWN;
     char *what = NULL;
     char *main_class = NULL;
@@ -331,12 +332,14 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argv */
     if (mode == LM_JAR) {
         SetClassPath(what);     /* Override class path */
     }
+fprintf(stderr, "[JLI_Launch] 1\n");
 
     /* set the -Dsun.java.command pseudo property */
     SetJavaCommandLineProp(what, argc, argv);
 
     /* Set the -Dsun.java.launcher pseudo property */
     SetJavaLauncherProp();
+fprintf(stderr, "[JLI_Launch] 2\n");
 
     return JVMInit(&ifn, threadStackSize, argc, argv, mode, what, ret);
 }
@@ -1528,6 +1531,7 @@ InitializeJVM(JavaVM **pvm, JNIEnv **penv, InvocationFunctions *ifn)
 {
     JavaVMInitArgs args;
     jint r;
+fprintf(stderr, "[JVDBG] InitializeJVM 0\n");
 
     memset(&args, 0, sizeof(args));
     args.version  = JNI_VERSION_1_2;
@@ -1547,8 +1551,10 @@ InitializeJVM(JavaVM **pvm, JNIEnv **penv, InvocationFunctions *ifn)
                    i, args.options[i].optionString);
     }
 
+fprintf(stderr, "[JVDBG] InitializeJVM 1\n");
     r = ifn->CreateJavaVM(pvm, (void **)penv, &args);
     JLI_MemFree(options);
+fprintf(stderr, "[JVDBG] InitializeJVM 2\n");
     return r == JNI_OK;
 }
 
