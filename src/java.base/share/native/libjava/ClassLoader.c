@@ -41,6 +41,7 @@ static JNINativeMethod methods[] = {
 JNIEXPORT void JNICALL
 Java_java_lang_ClassLoader_registerNatives(JNIEnv *env, jclass cls)
 {
+fprintf(stderr, "[JAVANATIVE] ClassLoader.registerNatives\n");
     (*env)->RegisterNatives(env, cls, methods,
                             sizeof(methods)/sizeof(JNINativeMethod));
 }

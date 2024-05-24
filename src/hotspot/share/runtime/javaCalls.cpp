@@ -330,6 +330,7 @@ void JavaCalls::call(JavaValue* result, const methodHandle& method, JavaCallArgu
 }
 
 void JavaCalls::call_helper(JavaValue* result, const methodHandle& method, JavaCallArguments* args, TRAPS) {
+fprintf(stderr, "[JVDBG] javaCalls, call_helper 0\n");
 
   JavaThread* thread = THREAD;
   assert(method.not_null(), "must have a method to call");
@@ -390,9 +391,11 @@ void JavaCalls::call_helper(JavaValue* result, const methodHandle& method, JavaC
     os::map_stack_shadow_pages(sp);
   }
 
+fprintf(stderr, "[JVDBG] javaCalls, call_helper 1\n");
   // do call
   { JavaCallWrapper link(method, receiver, result, CHECK);
     { HandleMark hm(thread);  // HandleMark used by HandleMarkCleaner
+fprintf(stderr, "[JVDBG] javaCalls, call_helper 2\n");
 
       // NOTE: if we move the computation of the result_val_address inside
       // the call to call_stub, the optimizer produces wrong code.
@@ -412,6 +415,7 @@ void JavaCalls::call_helper(JavaValue* result, const methodHandle& method, JavaC
         }
       }
 #endif
+fprintf(stderr, "[JVDBG] javaCalls, call_helper 3 with stub at %p\n", StubRoutines::call_stub());
       StubRoutines::call_stub()(
         (address)&link,
         // (intptr_t*)&(result->_value), // see NOTE above (compiler problem)
@@ -423,6 +427,7 @@ void JavaCalls::call_helper(JavaValue* result, const methodHandle& method, JavaC
         args->size_of_parameters(),
         CHECK
       );
+fprintf(stderr, "[JVDBG] javaCalls, call_helper 4\n");
 
       result = link.result();  // circumvent MS C++ 5.0 compiler bug (result is clobbered across call)
       // Preserve oop return value across possible gc points
@@ -430,6 +435,7 @@ void JavaCalls::call_helper(JavaValue* result, const methodHandle& method, JavaC
         thread->set_vm_result(result->get_oop());
       }
     }
+fprintf(stderr, "[JVDBG] javaCalls, call_helper 5\n");
   } // Exit JavaCallWrapper (can block - potential return oop must be preserved)
 
   // Check if a thread stop or suspend should be executed

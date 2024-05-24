@@ -916,13 +916,21 @@ void* ClassLoader::dll_lookup(void* lib, const char* name, const char* path) {
 }
 
 void ClassLoader::load_java_library() {
+fprintf(stderr, "[JVDBG] ClassLoader load_java_lib 0\n");
   assert(CanonicalizeEntry == nullptr, "should not load java library twice");
   void *javalib_handle = os::native_java_library();
+fprintf(stderr, "[JVDBG] ClassLoader load_java_lib 1\n");
   if (javalib_handle == nullptr) {
+fprintf(stderr, "[JVDBG] ClassLoader load_java_lib 2\n");
     vm_exit_during_initialization("Unable to load java library", nullptr);
   }
 
+fprintf(stderr, "[JVDBG] ClassLoader load_java_lib 3\n");
+#ifdef STATIC_BUILD
+  CanonicalizeEntry = CAST_TO_FN_PTR(canonicalize_fn_t, dlsym(RTLD_DEFAULT, "JDK_Canonicalize"));
+#else
   CanonicalizeEntry = CAST_TO_FN_PTR(canonicalize_fn_t, dll_lookup(javalib_handle, "JDK_Canonicalize", nullptr));
+#endif
 }
 
 void ClassLoader::load_jimage_library() {
@@ -1323,6 +1331,7 @@ void ClassLoader::record_result(JavaThread* current, InstanceKlass* ik,
 // it can be appended to and is by jvmti.
 
 void ClassLoader::initialize(TRAPS) {
+fprintf(stderr, "[JVDBG] ClassLoader initialize 0\n");
   if (UsePerfData) {
     // jvmstat performance counters
     NEWPERFTICKCOUNTER(_perf_accumulated_time, SUN_CLS, "time");
@@ -1352,9 +1361,12 @@ void ClassLoader::initialize(TRAPS) {
   }
 
   // lookup java library entry points
+fprintf(stderr, "[JVDBG] ClassLoader initialize 1\n");
   load_java_library();
+fprintf(stderr, "[JVDBG] ClassLoader initialize 2\n");
   // jimage library entry points are loaded below, in lookup_vm_options
   setup_bootstrap_search_path(THREAD);
+fprintf(stderr, "[JVDBG] ClassLoader initialize 3\n");
 }
 
 static char* lookup_vm_resource(JImageFile *jimage, const char *jimage_version, const char *path) {

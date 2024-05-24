@@ -96,6 +96,15 @@ bool VM_Version::supports_clflush() {
 #define CPUID_EXTENDED_FN_4 0x80000004
 #define CPUID_EXTENDED_FN_7 0x80000007
 #define CPUID_EXTENDED_FN_8 0x80000008
+void print_code(address start, size_t size) {
+fprintf(stderr, "PRINT ASM CODE\n");
+    unsigned char* code = (unsigned char*) start;
+    for (size_t i = 0; i < size; ++i) {
+        fprintf(stderr, "%02x ", code[i]);
+    }
+    fprintf(stderr, "\n");
+fprintf(stderr, "DONE PRINT ASM CODE\n");
+}
 
 class VM_Version_StubGenerator: public StubCodeGenerator {
  public:
@@ -103,6 +112,7 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
   VM_Version_StubGenerator(CodeBuffer *c) : StubCodeGenerator(c) {}
 
   address generate_get_cpu_info() {
+fprintf(stderr, "[JVDBG] VM_V_StubGen, generate_get_cpu_info 0\n");
     // Flags to test CPU type.
     const uint32_t HS_EFL_AC = 0x40000;
     const uint32_t HS_EFL_ID = 0x200000;
@@ -117,6 +127,7 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
     Label legacy_setup, save_restore_except, legacy_save_restore, start_simd_check;
 
     StubCodeMark mark(this, "VM_Version", "get_cpu_info_stub");
+fprintf(stderr, "[JVDBG] VM_V_StubGen, generate_get_cpu_info 1\n");
 #   define __ _masm->
 
     address start = __ pc();
@@ -593,6 +604,7 @@ class VM_Version_StubGenerator: public StubCodeGenerator {
     __ ret(0);
 
 #   undef __
+fprintf(stderr, "[JVDBG] VM_V_StubGen, generate_get_cpu_info 2, start = %p\n", start);
 
     return start;
   };
@@ -807,8 +819,9 @@ void VM_Version::get_processor_features() {
   _L1_data_cache_line_size = 16;
 
   // Get raw processor info
-
+fprintf(stderr, "[JVDBG] VM_Version features asked 0\n");
   get_cpu_info_stub(&_cpuid_info);
+fprintf(stderr, "[JVDBG] VM_Version features asked 1\n");
 
   assert_is_initialized();
   _cpu = extended_cpu_family();
@@ -2126,27 +2139,37 @@ int VM_Version::avx3_threshold() {
 static bool _vm_version_initialized = false;
 
 void VM_Version::initialize() {
+fprintf(stderr, "[JVDBG] os-VMVersion 0\n");
   ResourceMark rm;
   // Making this stub must be FIRST use of assembler
+fprintf(stderr, "[JVDBG] os-VMVersion 1\n");
   stub_blob = BufferBlob::create("VM_Version stub", stub_size);
+fprintf(stderr, "[JVDBG] os-VMVersion 2\n");
   if (stub_blob == nullptr) {
     vm_exit_during_initialization("Unable to allocate stub for VM_Version");
   }
   CodeBuffer c(stub_blob);
   VM_Version_StubGenerator g(&c);
+fprintf(stderr, "[JVDBG] os-VMVersion 3\n");
 
   get_cpu_info_stub = CAST_TO_FN_PTR(get_cpu_info_stub_t,
                                      g.generate_get_cpu_info());
+fprintf(stderr, "[JVDBG] os-VMVersion 4, stub = %p\n", get_cpu_info_stub);
+print_code((address)get_cpu_info_stub, 15);
   detect_virt_stub = CAST_TO_FN_PTR(detect_virt_stub_t,
                                      g.generate_detect_virt());
 
+fprintf(stderr, "[JVDBG] os-VMVersion 5\n");
   get_processor_features();
 
+fprintf(stderr, "[JVDBG] os-VMVersion 6\n");
   LP64_ONLY(Assembler::precompute_instructions();)
 
   if (VM_Version::supports_hv()) { // Supports hypervisor
+fprintf(stderr, "[JVDBG] os-VMVersion 7\n");
     check_virtualizations();
   }
+fprintf(stderr, "[JVDBG] os-VMVersion 8\n");
   _vm_version_initialized = true;
 }
 

@@ -504,6 +504,9 @@ extern struct JavaVM_ main_vm;
 static void* _native_java_library = nullptr;
 
 void* os::native_java_library() {
+#ifdef STATIC_BUILD
+    return get_default_process_handle();
+#endif
   if (_native_java_library == nullptr) {
     char buffer[JVM_MAXPATHLEN];
     char ebuf[1024];

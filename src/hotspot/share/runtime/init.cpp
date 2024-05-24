@@ -111,24 +111,35 @@ void vm_init_globals() {
 
 
 jint init_globals() {
+fprintf(stderr, "[JVDBG] init_globals 0\n");
   management_init();
   JvmtiExport::initialize_oop_storage();
+fprintf(stderr, "[JVDBG] init_globals 1\n");
 #if INCLUDE_JVMTI
   if (AlwaysRecordEvolDependencies) {
     JvmtiExport::set_can_hotswap_or_post_breakpoint(true);
     JvmtiExport::set_all_dependencies_are_recorded(true);
   }
 #endif
+fprintf(stderr, "[JVDBG] init_globals 2\n");
   bytecodes_init();
+fprintf(stderr, "[JVDBG] init_globals 3\n");
   classLoader_init1();
+fprintf(stderr, "[JVDBG] init_globals 4\n");
   compilationPolicy_init();
+fprintf(stderr, "[JVDBG] init_globals 5\n");
   codeCache_init();
+fprintf(stderr, "[JVDBG] init_globals 6a\n");
   VM_Version_init();              // depends on codeCache_init for emitting code
+fprintf(stderr, "[JVDBG] init_globals 6b\n");
   initial_stubs_init();
+fprintf(stderr, "[JVDBG] init_globals 6c\n");
   jint status = universe_init();  // dependent on codeCache_init and
                                   // initial_stubs_init and metaspace_init.
+fprintf(stderr, "[JVDBG] init_globals 6d\n");
   if (status != JNI_OK)
     return status;
+fprintf(stderr, "[JVDBG] init_globals 7\n");
 
 #ifdef LEAK_SANITIZER
   {
@@ -147,14 +158,20 @@ jint init_globals() {
   InterfaceSupport_init();
   VMRegImpl::set_regName();  // need this before generate_stubs (for printing oop maps).
   SharedRuntime::generate_stubs();
+fprintf(stderr, "[JVDBG] init_globals 0\n");
   return JNI_OK;
 }
 
 jint init_globals2() {
+fprintf(stderr, "[JVDBG] init_globals2 0\n");
   universe2_init();          // dependent on codeCache_init and initial_stubs_init
+fprintf(stderr, "[JVDBG] init_globals2 1\n");
   javaClasses_init();        // must happen after vtable initialization, before referenceProcessor_init
+fprintf(stderr, "[JVDBG] init_globals2 2\n");
   interpreter_init_code();   // after javaClasses_init and before any method gets linked
+fprintf(stderr, "[JVDBG] init_globals2 3\n");
   referenceProcessor_init();
+fprintf(stderr, "[JVDBG] init_globals2 4\n");
   jni_handles_init();
 #if INCLUDE_VM_STRUCTS
   vmStructs_init();
@@ -164,6 +181,7 @@ jint init_globals2() {
   if (!compilerOracle_init()) {
     return JNI_EINVAL;
   }
+fprintf(stderr, "[JVDBG] init_globals2 5\n");
   dependencyContext_init();
   dependencies_init();
 

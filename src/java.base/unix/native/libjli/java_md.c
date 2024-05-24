@@ -741,9 +741,9 @@ JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int argc, char **argv,
         int mode, char *what, int ret)
 {
-    fprintf(stderr, "[JVMInit] 0\n");
+    fprintf(stderr, "[JVDBG] JVMInit 0\n");
     ShowSplashScreen();
-    fprintf(stderr, "[JVMInit] 1\n");
+    fprintf(stderr, "[JVDBG] JVMInit] 1\n");
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
 }
 

@@ -1073,6 +1073,7 @@ void InstanceKlass::clean_initialization_error_table() {
 }
 
 void InstanceKlass::initialize_impl(TRAPS) {
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 0\n");
   HandleMark hm(THREAD);
 
   // Make sure klass is linked (verified) before initialization
@@ -1086,15 +1087,23 @@ void InstanceKlass::initialize_impl(TRAPS) {
 
   JavaThread* jt = THREAD;
 
-  bool debug_logging_enabled = log_is_enabled(Debug, class, init);
+  // bool debug_logging_enabled = log_is_enabled(Debug, class, init);
+  bool debug_logging_enabled = JNI_TRUE;
 
   // refer to the JVM book page 47 for description of steps
   // Step 1
   {
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 1\n");
+fprintf(stderr, "jt = %p\n", jt);
+fprintf(stderr, "jtname  = %s\n", jt->name());
+fprintf(stderr, "ext  = %s\n", external_name());
+        // fprintf(stderr, "Thread \"%s\" will do initialization of %s by thread \"%s\"",
+                               // jt->name(), external_name(), init_thread_name());
     MonitorLocker ml(jt, _init_monitor);
 
     // Step 2
     while (is_being_initialized() && !is_init_thread(jt)) {
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 2\n");
       if (debug_logging_enabled) {
         ResourceMark rm(jt);
         log_debug(class, init)("Thread \"%s\" waiting for initialization of %s by thread \"%s\"",
@@ -1109,6 +1118,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
 
     // Step 3
     if (is_being_initialized() && is_init_thread(jt)) {
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 3\n");
       if (debug_logging_enabled) {
         ResourceMark rm(jt);
         log_debug(class, init)("Thread \"%s\" recursively initializing %s",
@@ -1120,6 +1130,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
 
     // Step 4
     if (is_initialized()) {
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 4\n");
       if (debug_logging_enabled) {
         ResourceMark rm(jt);
         log_debug(class, init)("Thread \"%s\" found %s already initialized",
@@ -1131,6 +1142,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
 
     // Step 5
     if (is_in_error_state()) {
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 5\n");
       if (debug_logging_enabled) {
         ResourceMark rm(jt);
         log_debug(class, init)("Thread \"%s\" found %s is in error state",
@@ -1140,6 +1152,7 @@ void InstanceKlass::initialize_impl(TRAPS) {
     } else {
 
       // Step 6
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 6\n");
       set_init_state(being_initialized);
       set_init_thread(jt);
       if (debug_logging_enabled) {
@@ -1199,10 +1212,12 @@ void InstanceKlass::initialize_impl(TRAPS) {
   }
 
 
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 8\n");
   // Step 8
   {
     DTRACE_CLASSINIT_PROBE_WAIT(clinit, -1, wait);
     if (class_initializer() != nullptr) {
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 8 with clinit\n");
       // Timer includes any side effects of class initialization (resolution,
       // etc), but not recursive entry into call_class_initializer().
       PerfClassTraceTime timer(ClassLoader::perf_class_init_time(),
@@ -1211,16 +1226,21 @@ void InstanceKlass::initialize_impl(TRAPS) {
                                jt->get_thread_stat()->perf_recursion_counts_addr(),
                                jt->get_thread_stat()->perf_timers_addr(),
                                PerfClassTraceTime::CLASS_CLINIT);
+fprintf(stderr, "[JVDBG] InstanceKlass, prepare to clinit\n");
       call_class_initializer(THREAD);
+fprintf(stderr, "[JVDBG] InstanceKlass, did clinit\n");
     } else {
       // The elapsed time is so small it's not worth counting.
       if (UsePerfData) {
         ClassLoader::perf_classes_inited()->inc();
       }
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 8a\n");
       call_class_initializer(THREAD);
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 8b\n");
     }
   }
 
+fprintf(stderr, "[JVDBG] InstanceKlass, init_impl 9\n");
   // Step 9
   if (!HAS_PENDING_EXCEPTION) {
     set_initialization_state_and_notify(fully_initialized, THREAD);

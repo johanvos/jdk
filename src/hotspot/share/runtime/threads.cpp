@@ -592,6 +592,7 @@ fprintf(stderr, "[JVDBG] create_vm 9f\n");
 
 fprintf(stderr, "[JVDBG] create_vm 10\n");
   status = init_globals2();
+fprintf(stderr, "[JVDBG] create_vm 10a, status = %d\n", status);
   if (status != JNI_OK) {
     Threads::remove(main_thread, false);
     // It is possible that we managed to fully initialize Universe but have then

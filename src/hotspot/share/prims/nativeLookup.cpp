@@ -253,7 +253,7 @@ static address lookup_special_native(const char* jni_name) {
 address NativeLookup::lookup_style(const methodHandle& method, char* pure_name, const char* long_name, int args_size, bool os_style, TRAPS) {
   address entry;
   const char* jni_name = compute_complete_jni_name(pure_name, long_name, args_size, os_style);
-
+fprintf(stderr, "[JVDBG] lookup_style for pure_name=%s, long_name=%s, jni_name=%s\n", pure_name, long_name, jni_name);
 
   // If the loader is null we have a system class, so we attempt a lookup in
   // the native Java library. This takes care of any bootstrapping problems.
@@ -262,14 +262,17 @@ address NativeLookup::lookup_style(const methodHandle& method, char* pure_name, 
   // another VM/library dependency
   Handle loader(THREAD, method->method_holder()->class_loader());
   if (loader.is_null()) {
+fprintf(stderr, "[JVDBG] lookup_style, loader is null\n");
     entry = lookup_special_native(jni_name);
     if (entry == nullptr) {
-       entry = (address) os::dll_lookup(os::native_java_library(), jni_name);
+       // entry = (address) os::dll_lookup(os::native_java_library(), jni_name);
+       entry = (address) dlsym(RTLD_DEFAULT, jni_name);
     }
     if (entry != nullptr) {
       return entry;
     }
   }
+fprintf(stderr, "[JVDBG] lookup_style, loader is NOT null\n");
 
   // Otherwise call static method findNative in ClassLoader
   Klass*   klass = vmClasses::ClassLoader_klass();
