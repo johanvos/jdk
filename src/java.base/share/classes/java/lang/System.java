@@ -918,6 +918,7 @@ public final class System {
      * @see        java.lang.SecurityManager#checkPropertiesAccess()
      */
     public static void setProperties(Properties props) {
+Thread.dumpStack();
         @SuppressWarnings("removal")
         SecurityManager sm = getSecurityManager();
         if (sm != null) {
@@ -929,6 +930,7 @@ public final class System {
             VersionProps.init(tempProps);
             props = createProperties(tempProps);
         }
+Thread.dumpStack();
         System.props = props;
     }
 
@@ -1051,6 +1053,7 @@ public final class System {
                 SecurityConstants.PROPERTY_WRITE_ACTION));
         }
 
+Thread.dumpStack();
         return (String) props.setProperty(key, value);
     }
 

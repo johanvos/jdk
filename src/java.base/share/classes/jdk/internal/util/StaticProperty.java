@@ -114,6 +114,12 @@ public final class StaticProperty {
     }
 
     private static String getProperty(Properties props, String key) {
+        if (key == null) {
+            throw new InternalError("null key");
+        }
+        if (props == null) {
+            throw new InternalError("null props");
+        }
         String v = props.getProperty(key);
         if (v == null) {
             throw new InternalError("null property: " + key);

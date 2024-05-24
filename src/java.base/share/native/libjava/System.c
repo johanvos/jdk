@@ -106,36 +106,44 @@ Java_java_lang_System_identityHashCode(JNIEnv *env, jobject this, jobject x)
 JNIEXPORT jobjectArray JNICALL
 Java_jdk_internal_util_SystemProps_00024Raw_platformProperties(JNIEnv *env, jclass cla)
 {
+fprintf(stderr, "[JVDBG] raw_platform 0\n");
     java_props_t *sprops;
     jobject propArray = NULL;
     jclass classString;
     int nstrings = jdk_internal_util_SystemProps_Raw_FIXED_LENGTH;
 
+fprintf(stderr, "[JVDBG] raw_platform 1, length = %d\n", nstrings);
     // Get the platform specific values
     sprops = GetJavaProperties(env);
+fprintf(stderr, "[JVDBG] raw_platform 2, sprops = %p\n", sprops);
     CHECK_NULL_RETURN(sprops, NULL);
 
     /*
      * !!! DO NOT call PUTPROP_PlatformString (NewStringPlatform) before this line !!!
      */
     InitializeEncoding(env, sprops->sun_jnu_encoding);
+fprintf(stderr, "[JVDBG] raw_platform 3\n");
 
     // Ensure capacity for the array and for a string for each fixed length element
     if ((*env)->EnsureLocalCapacity(env, nstrings + 2) < 0) {
         return NULL;
     }
+fprintf(stderr, "[JVDBG] raw_platform 4\n");
 
     // Allocate an array of String for all the well known props
     classString = JNU_ClassString(env);
     CHECK_NULL_RETURN(classString, NULL);
+fprintf(stderr, "[JVDBG] raw_platform 5\n");
 
     propArray = (*env)->NewObjectArray(env, nstrings, classString, NULL);
     CHECK_NULL_RETURN(propArray, NULL);
+fprintf(stderr, "[JVDBG] raw_platform 6\n");
 
     /* os properties */
     PUTPROP(propArray, _os_name_NDX, sprops->os_name);
     PUTPROP(propArray, _os_version_NDX, sprops->os_version);
     PUTPROP(propArray, _os_arch_NDX, sprops->os_arch);
+fprintf(stderr, "[JVDBG] raw_platform 7\n");
 
 #ifdef JDK_ARCH_ABI_PROP_NAME
     PUTPROP(propArray, _sun_arch_abi_NDX, sprops->sun_arch_abi);
@@ -199,6 +207,7 @@ Java_jdk_internal_util_SystemProps_00024Raw_platformProperties(JNIEnv *env, jcla
     }
 #endif
 
+fprintf(stderr, "[JVDBG] raw_platform 8\n");
     /* data model */
     if (sizeof(sprops) == 4) {
         sprops->data_model = "32";
@@ -230,6 +239,7 @@ Java_jdk_internal_util_SystemProps_00024Raw_platformProperties(JNIEnv *env, jcla
    PUTPROP(propArray, _format_script_NDX, sprops->format_script);
    PUTPROP(propArray, _format_country_NDX, sprops->format_country);
    PUTPROP(propArray, _format_variant_NDX, sprops->format_variant);
+fprintf(stderr, "[JVDBG] raw_platform 9\n");
 
    return propArray;
 }
@@ -249,7 +259,9 @@ Java_jdk_internal_util_SystemProps_00024Raw_platformProperties(JNIEnv *env, jcla
 JNIEXPORT jobjectArray JNICALL
 Java_jdk_internal_util_SystemProps_00024Raw_vmProperties(JNIEnv *env, jclass cla)
 {
+fprintf(stderr, "raw_vmprops 0\n");
     jobjectArray cmdProps = JVM_GetProperties(env);
+fprintf(stderr, "raw_vmprops 1, cmdprops = %p\n", cmdProps);
     return cmdProps;
 }
 

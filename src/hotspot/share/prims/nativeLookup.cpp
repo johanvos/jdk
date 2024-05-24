@@ -271,6 +271,7 @@ fprintf(stderr, "[JVDBG] lookup_style, loader is null\n");
     if (entry != nullptr) {
       return entry;
     }
+fprintf(stderr, "[JVDBG] lookup_style MAJOR PROBLEM trying to load JNI ref %s\n", jni_name);
   }
 fprintf(stderr, "[JVDBG] lookup_style, loader is NOT null\n");
 

@@ -472,6 +472,7 @@ invokeInstanceMainWithoutArgs(JNIEnv *env, jclass mainClass) {
 int
 JavaMain(void* _args)
 {
+fprintf(stderr, "[JVDBG] JavaMain 0\n");
     JavaMainArgs *args = (JavaMainArgs *)_args;
     int argc = args->argc;
     char **argv = args->argv;
@@ -495,6 +496,7 @@ JavaMain(void* _args)
         JLI_ReportErrorMessage(JVM_ERROR1);
         exit(1);
     }
+fprintf(stderr, "[JVDBG] JavaMain 1\n");
 
     if (showSettings != NULL) {
         ShowSettings(env, showSettings);
@@ -529,10 +531,12 @@ JavaMain(void* _args)
         }
     }
 
+fprintf(stderr, "[JVDBG] JavaMain 2\n");
     // modules have been validated at startup so exit
     if (validateModules) {
         LEAVE();
     }
+fprintf(stderr, "[JVDBG] JavaMain 3\n");
 
     /*
      * -Xshare:dump does not have a main class so the VM can safely exit now
@@ -541,6 +545,7 @@ JavaMain(void* _args)
         CHECK_EXCEPTION_LEAVE(1);
         LEAVE();
     }
+fprintf(stderr, "[JVDBG] JavaMain 4\n");
 
     /* If the user specified neither a class name nor a JAR file */
     if (printXUsage || printUsage || what == 0 || mode == LM_UNKNOWN) {
@@ -549,12 +554,15 @@ JavaMain(void* _args)
         LEAVE();
     }
 
+fprintf(stderr, "[JVDBG] JavaMain 5\n");
     FreeKnownVMs(); /* after last possible PrintUsage */
+fprintf(stderr, "[JVDBG] JavaMain 8\n");
 
     if (JLI_IsTraceLauncher()) {
         end = CurrentTimeMicros();
         JLI_TraceLauncher("%ld micro seconds to InitializeJVM\n", (long)(end-start));
     }
+fprintf(stderr, "[JVDBG] JavaMain 9\n");
 
     /* At this stage, argc/argv have the application's arguments */
     if (JLI_IsTraceLauncher()){

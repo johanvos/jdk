@@ -192,6 +192,7 @@ public final class Security {
         // maybe check for a system property which will specify where to
         // look. Someday.
         String sep = File.separator;
+System.err.println("[JVDBG] JAVAHOME = " + StaticProperty.javaHome() );
         return new File(StaticProperty.javaHome() + sep + "conf" + sep +
                         "security" + sep + filename);
     }
