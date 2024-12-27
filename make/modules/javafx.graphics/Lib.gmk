@@ -1,0 +1,20 @@
+include CopyFiles.gmk
+include LibCommon.gmk
+
+# Hook to include the corresponding custom file, if present.
+$(eval $(call IncludeCustomExtension, modules/javafx.graphics/Lib.gmk))
+
+# Prepare the find cache.
+$(call FillFindCache, $(wildcard $(TOPDIR)/src/javafx.graphics/*/native))
+
+################################################################################
+## Build libnio
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBPRISM, \
+    NAME := prism_es2, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := -lX11 -lXxf86vm -lGL, \
+))
+
+TARGETS += $(BUILD_LIBPRISM)
