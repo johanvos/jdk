@@ -41,6 +41,7 @@ AC_DEFUN_ONCE([LIB_SETUP_BUNDLED_LIBS],
   LIB_SETUP_ZLIB
   LIB_SETUP_LCMS
   LIB_SETUP_HARFBUZZ
+  LIB_SETUP_GTK
 ])
 
 ################################################################################
@@ -312,4 +313,44 @@ AC_DEFUN_ONCE([LIB_SETUP_HARFBUZZ],
   AC_SUBST(USE_EXTERNAL_HARFBUZZ)
   AC_SUBST(HARFBUZZ_CFLAGS)
   AC_SUBST(HARFBUZZ_LIBS)
+])
+
+################################################################################
+# Setup gtk
+################################################################################
+AC_DEFUN_ONCE([LIB_SETUP_GTK],
+[
+  AC_ARG_WITH(gtk, [AS_HELP_STRING([--with-gtk],
+      [use gtk from build system or OpenJDK source (system, bundled) @<:@bundled@:>@])])
+
+  AC_MSG_CHECKING([for which gtk to use])
+
+  DEFAULT_GTK=system
+  # If user didn't specify, use DEFAULT_GTK
+  if test "x${with_gtk}" = "x"; then
+    with_gtk=${DEFAULT_GTK}
+  fi
+
+  if test "x${with_gtk}" = "xbundled"; then
+    USE_EXTERNAL_GTK=false
+    GTK_CFLAGS=""
+    GTK_LIBS=""
+    AC_MSG_RESULT([bundled])
+  elif test "x${with_gtk}" = "xsystem"; then
+    AC_MSG_RESULT([system])
+    PKG_CHECK_MODULES([GTK], [gtk+-3.0 gthread-2.0 xtst gio-unix-2.0], [GTK_FOUND=yes], [GTK_FOUND=no])
+    if test "x${GTK_FOUND}" = "xyes"; then
+      # PKG_CHECK_MODULES will set GTK_CFLAGS and GTK_LIBS
+      USE_EXTERNAL_GTK=true
+    else
+      HELP_MSG_MISSING_DEPENDENCY([gtk])
+      AC_MSG_ERROR([--with-gtk=system specified, but no gtk found! $HELP_MSG])
+    fi
+  else
+    AC_MSG_ERROR([Invalid value for --with-gtk: ${with_gtk}, use 'system' or 'bundled'])
+  fi
+
+  AC_SUBST(USE_EXTERNAL_GTK)
+  AC_SUBST(GTK_CFLAGS)
+  AC_SUBST(GTK_LIBS)
 ])

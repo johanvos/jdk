@@ -8,7 +8,7 @@ $(eval $(call IncludeCustomExtension, modules/javafx.graphics/Lib.gmk))
 $(call FillFindCache, $(wildcard $(TOPDIR)/src/javafx.graphics/*/native))
 
 ################################################################################
-## Build libnio
+## Build libprism
 ################################################################################
 
 $(eval $(call SetupJdkLibrary, BUILD_LIBPRISM, \
@@ -18,3 +18,30 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBPRISM, \
 ))
 
 TARGETS += $(BUILD_LIBPRISM)
+
+################################################################################
+## Build libglass
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBGLASS, \
+    NAME := glass, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := -lX11, \
+))
+
+TARGETS += $(BUILD_LIBGLASS)
+
+################################################################################
+## Build libglassgtk3
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBGLASSGTK3, \
+    NAME := glassgtk3, \
+    LINK_TYPE := C++, \
+    OPTIMIZATION := HIGH, \
+    CFLAGS := $(GTK_CFLAGS), \
+    CXXFLAGS := $(GTK_CFLAGS), \
+    LIBS_linux := -static-libgcc -static-libstdc++ $(GTK_LIBS) -lX11 -ldl, \
+))
+
+TARGETS += $(BUILD_LIBGLASSGTK3)
