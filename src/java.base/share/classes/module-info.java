@@ -217,6 +217,7 @@ module java.base {
         java.net.http,
         java.rmi,
         java.security.jgss,
+        javafx.graphics,
         jdk.attach,
         jdk.charsets,
         jdk.compiler,
