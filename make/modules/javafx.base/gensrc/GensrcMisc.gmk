@@ -1,0 +1,11 @@
+$(eval $(call SetupTextFileProcessing, BUILD_VERSION_JAVAFX, \
+    SOURCE_FILES := $(TOPDIR)/src/javafx.base/share/classes/com/sun/javafx/runtime/VersionInfo.java.template, \
+    OUTPUT_FILE := $(SUPPORT_OUTPUTDIR)/gensrc/javafx.base/com/sun/javafx/runtime/VersionInfo.java, \
+    REPLACEMENTS := \
+        @@BUILD_TIMESTAMP@@ => $(BUILD_TIMESTAMP) ; \
+        @@RELEASE_SUFFIX@@ => $(RELEASE_SUFFIX) ; \
+        @@VERSION@@ => $(VERSION) ; \
+        @@RUNTIME_VERSION@@ => $(RUNTIME_VERSION), \
+))
+
+TARGETS += $(BUILD_VERSION_JAVAFX)

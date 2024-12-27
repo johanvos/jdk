@@ -1,0 +1,1 @@
+DISABLED_WARNINGS_java := try deprecation rawtypes unchecked serial cast removal preview restricted dangling-doc-comments overloads module this-escape
