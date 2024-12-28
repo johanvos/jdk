@@ -1,0 +1,3 @@
+DISABLED_WARNINGS_java := try deprecation rawtypes unchecked serial cast removal preview restricted dangling-doc-comments overloads module this-escape \
+                          lossy-conversions static auxiliaryclass exports fallthrough varargs
+JAVAC_FLAGS += -encoding UTF-8
