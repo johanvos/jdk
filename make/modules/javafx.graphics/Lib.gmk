@@ -20,6 +20,18 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBPRISM, \
 TARGETS += $(BUILD_LIBPRISM)
 
 ################################################################################
+## Build libprism_sw
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBPRISM_SW, \
+    NAME := prism_sw, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := -lX11 -lXxf86vm -lGL, \
+))
+
+TARGETS += $(BUILD_LIBPRISM_SW)
+
+################################################################################
 ## Build libglass
 ################################################################################
 
@@ -41,7 +53,47 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBGLASSGTK3, \
     OPTIMIZATION := HIGH, \
     CFLAGS := $(GTK_CFLAGS), \
     CXXFLAGS := $(GTK_CFLAGS), \
-    LIBS_linux := -static-libgcc -static-libstdc++ $(GTK_LIBS) -lX11 -ldl, \
+    LIBS_linux := $(GTK_LIBS) -lX11 -ldl, \
 ))
 
 TARGETS += $(BUILD_LIBGLASSGTK3)
+
+################################################################################
+## Build libjavafx_font
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXFONT, \
+    NAME := javafx_font, \
+    LINK_TYPE := C++, \
+    OPTIMIZATION := HIGH, \
+))
+
+TARGETS += $(BUILD_LIBJAVAFXFONT)
+
+################################################################################
+## Build libjavafx_font_freetype
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXFONTFREETYPE, \
+    NAME := javafx_font_freetype, \
+    LINK_TYPE := C++, \
+    CFLAGS := $(FREETYPE_CFLAGS) -D_ENABLE_PANGO, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := -lfreetype, \
+))
+
+TARGETS += $(BUILD_LIBJAVAFXFONTFREETYPE)
+
+################################################################################
+## Build libjavafx_font_pango
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXFONTPANGO, \
+    NAME := javafx_font_pango, \
+    LINK_TYPE := C++, \
+    CFLAGS := $(PANGO_CFLAGS) -D_ENABLE_PANGO, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := $(PANGO_LIBS), \
+))
+
+TARGETS += $(BUILD_LIBJAVAFXFONTPANGO)

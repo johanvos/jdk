@@ -42,6 +42,7 @@ AC_DEFUN_ONCE([LIB_SETUP_BUNDLED_LIBS],
   LIB_SETUP_LCMS
   LIB_SETUP_HARFBUZZ
   LIB_SETUP_GTK
+  LIB_SETUP_PANGO
 ])
 
 ################################################################################
@@ -353,4 +354,44 @@ AC_DEFUN_ONCE([LIB_SETUP_GTK],
   AC_SUBST(USE_EXTERNAL_GTK)
   AC_SUBST(GTK_CFLAGS)
   AC_SUBST(GTK_LIBS)
+])
+
+################################################################################
+# Setup pango
+################################################################################
+AC_DEFUN_ONCE([LIB_SETUP_PANGO],
+[
+  AC_ARG_WITH(gtk, [AS_HELP_STRING([--with-pango],
+      [use pango from build system or OpenJDK source (system, bundled) @<:@bundled@:>@])])
+
+  AC_MSG_CHECKING([for which pango to use])
+
+  DEFAULT_PANGO=system
+  # If user didn't specify, use DEFAULT_PANGO
+  if test "x${with_pango}" = "x"; then
+    with_pango=${DEFAULT_PANGO}
+  fi
+
+  if test "x${with_pango}" = "xbundled"; then
+    USE_EXTERNAL_PANGO=false
+    PANGO_CFLAGS=""
+    PANGO_LIBS=""
+    AC_MSG_RESULT([bundled])
+  elif test "x${with_pango}" = "xsystem"; then
+    AC_MSG_RESULT([system])
+    PKG_CHECK_MODULES([PANGO], [pangoft2], [PANGO_FOUND=yes], [PANGO_FOUND=no])
+    if test "x${PANGO_FOUND}" = "xyes"; then
+      # PKG_CHECK_MODULES will set PANGO_CFLAGS and PANGO_LIBS
+      USE_EXTERNAL_PANGO=true
+    else
+      HELP_MSG_MISSING_DEPENDENCY([pango])
+      AC_MSG_ERROR([--with-pango=system specified, but no pango found! $HELP_MSG])
+    fi
+  else
+    AC_MSG_ERROR([Invalid value for --with-pango: ${with_pango}, use 'system' or 'bundled'])
+  fi
+
+  AC_SUBST(USE_EXTERNAL_PANGO)
+  AC_SUBST(PANGO_CFLAGS)
+  AC_SUBST(PANGO_LIBS)
 ])
