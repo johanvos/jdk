@@ -26,7 +26,7 @@ TARGETS += $(BUILD_LIBPRISM)
 $(eval $(call SetupJdkLibrary, BUILD_LIBPRISM_SW, \
     NAME := prism_sw, \
     OPTIMIZATION := HIGH, \
-    LIBS_linux := -lX11 -lXxf86vm -lGL, \
+    LIBS_linux := -lX11 -lXxf86vm -lGL -lm, \
 ))
 
 TARGETS += $(BUILD_LIBPRISM_SW)
