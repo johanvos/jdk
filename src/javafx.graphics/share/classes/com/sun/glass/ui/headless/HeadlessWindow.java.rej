@@ -1,0 +1,70 @@
+--- modules/javafx.graphics/src/main/java/com/sun/glass/ui/headless/HeadlessWindow.java
++++ modules/javafx.graphics/src/main/java/com/sun/glass/ui/headless/HeadlessWindow.java
+@@ -1,5 +1,6 @@
+ package com.sun.glass.ui.headless;
+ 
++import com.sun.glass.events.WindowEvent;
+ import com.sun.glass.ui.Cursor;
+ import com.sun.glass.ui.Pixels;
+ import com.sun.glass.ui.Screen;
+@@ -51,7 +52,59 @@ public class HeadlessWindow extends Window {
+ 
+     @Override
+     protected void _setBounds(long ptr, int x, int y, boolean xSet, boolean ySet, int w, int h, int cw, int ch, float xGravity, float yGravity) {
+-    }
++        System.err.println("[HW] setBounds called with x = "+x+", y = "+y+", xset = "+xSet+", ySet = "+ySet+", w = "+w+", h = "+h+", cw = " + cw+", ch = " + ch);
++              if (w > 0) {
++            //window width surpass window content width (cw)
++            width = w;
++        } else if (cw > 0) {
++            //content width changed 
++            width = cw;
++        } else {
++            //no explicit request to change width, get default 
++            width = getWidth();
++        }
++
++        if (h > 0) {
++            //window height surpass window content height(ch)
++            height = h;
++        } else if (ch > 0) {
++            //content height changed 
++            height = ch;
++        } else {
++            //no explicit request to change height, get default 
++            height = getHeight();
++        }
++        if (!xSet) {
++            x = getX(); 
++        }
++        if (!ySet) {
++            y = getY(); 
++        }
++        if (maxWidth >= 0) { 
++            width = Math.min(width, maxWidth);
++        }
++        if (maxHeight >= 0) { 
++            height = Math.min(height, maxHeight);
++        }
++        width = Math.max(width, minWidth);
++        height = Math.max(height, minHeight);
++
++        notifyResizeAndMove(x, y, width, height);  
++    }
++        private void notifyResizeAndMove(int x, int y, int width, int height) {
++            System.err.println("nram, w = "+width+", h = "+height);
++        HeadlessView view = (HeadlessView)getView();
++        if (getWidth() != width || getHeight() != height) {
++            notifyResize(WindowEvent.RESIZE, width, height);
++            System.err.println("notified, view = "+view);
++            if (view != null) {
++                view.notifyResize(width, height);
++            }
++        }
++        if (getX() != x || getY() != y) {
++            notifyMove(x, y);
++        }
++        }
+ 
+     @Override
+     protected boolean _setVisible(long ptr, boolean visible) {
