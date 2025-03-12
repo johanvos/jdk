@@ -217,6 +217,16 @@ RPM_LIST := \
     libffi libffi-devel \
     fontconfig fontconfig-devel \
     systemtap-sdt-devel \
+    gtk2-devel gtk3 pango freetype \
+    Mesa-libGL-devel \
+    glib2 \
+    harfbuzz harfbuzz-devel \
+    cairo cairo-devel gdk-pixbuf gdk-pixbuf-devel atk atk-devel pcre2 pcre2-devel \
+    sysprof-capture-devel bzip2 bzip2-devel libpng libpng-devel brotli brotli-devel \
+    graphite2 graphite2-devel libmount-devel libblkid libselinux libsepol fribidi-devel \
+    libthai libdatrie libxml2 libXft pixman libjpeg libtiff libXfixes libXcursor libXcomposite \
+    libXdamage wayland libxkbcommon libepoxy libglvnd-devel libcloudproviders at-spi2-atk dbus at-spi2-core \
+    libglvnd-glx libXxf86vm \
     #
 
 ################################################################################
