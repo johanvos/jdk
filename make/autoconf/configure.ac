@@ -236,6 +236,7 @@ JDKOPT_SETUP_FALLBACK_LINKER
 
 LIB_DETERMINE_DEPENDENCIES
 LIB_SETUP_LIBRARIES
+OPENJFX_SETUP
 
 ################################################################################
 #

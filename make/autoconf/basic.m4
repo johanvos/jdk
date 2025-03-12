@@ -625,3 +625,20 @@ AC_DEFUN_ONCE([BASIC_POST_CONFIG_OUTPUT],
   # Make the compare script executable
   $CHMOD +x $OUTPUTDIR/compare.sh
 ])
+
+################################################################################
+#
+# Add OpenJFX code
+#
+AC_DEFUN_ONCE([OPENJFX_SETUP],
+[
+  AC_ARG_WITH(openjfx, [AS_HELP_STRING([--with-openjfx],
+      [specify the location of an openjfx repo])])
+  if test "x$with_openjfx" = "x"; then
+    WITH_OPENJFX=""
+  else
+    WITH_OPENJFX="$with_openjfx"
+  fi
+
+  AC_SUBST(WITH_OPENJFX)
+])
