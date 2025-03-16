@@ -97,3 +97,15 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXFONTPANGO, \
 ))
 
 TARGETS += $(BUILD_LIBJAVAFXFONTPANGO)
+
+################################################################################
+## Build libjavafx_iio
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXIIO, \
+    NAME := javafx_iio, \
+    LINK_TYPE := C++, \
+    OPTIMIZATION := HIGH, \
+))
+
+TARGETS += $(BUILD_LIBJAVAFXIIO)
