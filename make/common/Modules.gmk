@@ -95,11 +95,13 @@ MAN_DOCS_SUBDIRS += share/man windows/man
 # Find all module-info.java files for the current build target platform and
 # configuration.
 # Param 1 - Module to find for, set to * for finding all
+
 FindAllModuleInfos = \
     $(sort $(wildcard \
         $(foreach sub, $(SRC_SUBDIRS), \
           $(patsubst %,%/$(strip $1)/$(sub)/module-info.java, $(TOP_SRC_DIRS))) \
-        $(patsubst %,%/$(strip $1)/module-info.java, $(IMPORT_MODULES_SRC))))
+        $(patsubst %,%/$(strip $1)/module-info.java, $(IMPORT_MODULES_SRC)) \
+        $(patsubst %,%/modules/$(strip $1)/src/main/java/module-info.java, $(OPENJFX_MODULES_SRC))))
 
 # Find module-info.java files in the specific source dir
 # Param 1 - Src dir to find module-info.java files in
@@ -117,8 +119,10 @@ FindModuleInfosForSrcDir = \
 GetModuleNameFromModuleInfo = \
     $(strip $(foreach mi, $1, \
       $(if $(filter $(addsuffix %, $(IMPORT_MODULES_SRC)), $(mi)), \
-        $(notdir $(patsubst %/,%, $(dir $(mi)))), \
-        $(notdir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(mi)))))))))))
+        $(notdir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(mi)))))))))), \
+        $(if $(filter $(addsuffix %, $(OPENJFX_MODULES_SRC)), $(mi)), \
+          $(notdir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(mi)))))))))), \
+          $(notdir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(patsubst %/,%, $(dir $(mi))))))))))))
 
 # Find all modules by looking for module-info.java files and looking at parent
 # directories.

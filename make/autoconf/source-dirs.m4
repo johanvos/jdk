@@ -90,3 +90,51 @@ AC_DEFUN_ONCE([SRCDIRS_SETUP_IMPORT_MODULES],
   AC_SUBST(IMPORT_MODULES_SRC)
   AC_SUBST(IMPORT_MODULES_MAKE)
 ])
+
+AC_DEFUN_ONCE([SRCDIRS_SETUP_OPENJFX_MODULES],
+[
+  AC_ARG_WITH(openjfx-modules, [AS_HELP_STRING([--with-openjfx-modules],
+      [import openjfx modules])])
+
+  if test "x$with_openjfx_modules" != x \
+      && test "x$with_openjfx_modules" != "xno"; then
+    if test -d "$with_openjfx_modules"; then
+      OPENJFX_MODULES_TOPDIR="$with_openjfx_modules"
+      UTIL_FIXUP_PATH([OPENJFX_MODULES_TOPDIR])
+    else
+      AC_MSG_ERROR([--with-openjfx-modules="$with_openjfx_modules" must point to a dir or a zip file])
+    fi
+  fi
+
+  if test -d "$OPENJFX_MODULES_TOPDIR/modules"; then
+    OPENJFX_MODULES_CLASSES="$OPENJFX_MODULES_TOPDIR/modules"
+  fi
+  if test -d "$OPENJFX_MODULES_TOPDIR/modules_cmds"; then
+    OPENJFX_MODULES_CMDS="$OPENJFX_MODULES_TOPDIR/modules_cmds"
+  fi
+  if test -d "$OPENJFX_MODULES_TOPDIR/modules_libs"; then
+    OPENJFX_MODULES_LIBS="$OPENJFX_MODULES_TOPDIR/modules_libs"
+  fi
+  if test -d "$OPENJFX_MODULES_TOPDIR/modules_conf"; then
+    OPENJFX_MODULES_CONF="$OPENJFX_MODULES_TOPDIR/modules_conf"
+  fi
+  if test -d "$OPENJFX_MODULES_TOPDIR/modules_legal"; then
+    OPENJFX_MODULES_LEGAL="$OPENJFX_MODULES_TOPDIR/modules_legal"
+  fi
+  if test -d "$OPENJFX_MODULES_TOPDIR/modules_man"; then
+    OPENJFX_MODULES_MAN="$OPENJFX_MODULES_TOPDIR/modules_man"
+  fi
+  OPENJFX_MODULES_SRC="$OPENJFX_MODULES_TOPDIR"
+  if test -d "$OPENJFX_MODULES_TOPDIR/make"; then
+    OPENJFX_MODULES_MAKE="$OPENJFX_MODULES_TOPDIR/make"
+  fi
+
+  AC_SUBST(OPENJFX_MODULES_CLASSES)
+  AC_SUBST(OPENJFX_MODULES_CMDS)
+  AC_SUBST(OPENJFX_MODULES_LIBS)
+  AC_SUBST(OPENJFX_MODULES_CONF)
+  AC_SUBST(OPENJFX_MODULES_LEGAL)
+  AC_SUBST(OPENJFX_MODULES_MAN)
+  AC_SUBST(OPENJFX_MODULES_SRC)
+  AC_SUBST(OPENJFX_MODULES_MAKE)
+])

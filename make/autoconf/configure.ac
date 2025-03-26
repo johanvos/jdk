@@ -166,6 +166,7 @@ JDKOPT_SETUP_JDK_OPTIONS
 
 SRCDIRS_SETUP_DIRS
 SRCDIRS_SETUP_IMPORT_MODULES
+SRCDIRS_SETUP_OPENJFX_MODULES
 
 ################################################################################
 #
