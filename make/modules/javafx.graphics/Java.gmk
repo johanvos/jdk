@@ -1,0 +1,10 @@
+DISABLED_WARNINGS_java := try deprecation rawtypes unchecked serial cast removal preview restricted dangling-doc-comments overloads module this-escape \
+                          lossy-conversions static auxiliaryclass exports fallthrough
+JAVAC_FLAGS += -encoding UTF-8
+
+COPY += .gif .png .wav .txt .xml .css .frag
+
+CLEAN_FILES += $(wildcard \
+    $(TOPDIR)/src/javafx.graphics/share/classes/com/sun/javafx/tk/quantum/*.properties)
+
+TARGETS += $(call CreateHkTargets, $(CLEAN_FILES))

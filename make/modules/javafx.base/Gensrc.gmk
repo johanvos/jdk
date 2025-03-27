@@ -1,0 +1,13 @@
+include GensrcCommon.gmk
+
+$(eval $(call SetupTextFileProcessing, BUILD_VERSION_JAVAFX, \
+    SOURCE_FILES := $(OPENJFX_MODULES_SRC)/modules/javafx.base/src/main/version-info/VersionInfo.java, \
+    OUTPUT_FILE := $(SUPPORT_OUTPUTDIR)/gensrc/javafx.base/com/sun/javafx/runtime/VersionInfo.java, \
+    REPLACEMENTS := \
+        @@BUILD_TIMESTAMP@@ => $(BUILD_TIMESTAMP) ; \
+        @@RELEASE_SUFFIX@@ => $(RELEASE_SUFFIX) ; \
+        @@VERSION@@ => $(VERSION) ; \
+        @@RUNTIME_VERSION@@ => $(RUNTIME_VERSION), \
+))
+
+TARGETS += $(BUILD_VERSION_JAVAFX)

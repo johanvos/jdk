@@ -1,0 +1,61 @@
+include CopyFiles.gmk
+include LibCommon.gmk
+
+# Hook to include the corresponding custom file, if present.
+$(eval $(call IncludeCustomExtension, modules/javafx.graphics/Lib.gmk))
+
+# Prepare the find cache.
+$(call FillFindCache, $(wildcard $(TOPDIR)/src/javafx.graphics/*/native))
+
+################################################################################
+## Build libprism
+################################################################################
+
+SRC_SHARE_PRISM= $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-prism-es2
+$(eval $(call SetupJdkLibrary, BUILD_LIBPRISM, \
+    NAME := prism_es2, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := -lX11 -lXxf86vm -lGL, \
+    SRC := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-prism-es2/x11, \
+    EXTRA_FILES := $(SRC_SHARE_PRISM)/GLContext.c, \
+    EXTRA_FILES += $(SRC_SHARE_PRISM)/GLFactory.c, \
+    EXTRA_FILES += $(SRC_SHARE_PRISM)/GLPixelFormat.c, \
+    CFLAGS := -Wno-error, \
+))
+
+TARGETS += $(BUILD_LIBPRISM)
+
+################################################################################
+## Build libglass
+################################################################################
+
+SRC_SHARE_GLASS= $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-glass
+$(eval $(call SetupJdkLibrary, BUILD_LIBGLASS, \
+    NAME := glass, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := -lX11, \
+    EXTRA_FILES := $(SRC_SHARE_GLASS)/gtk/launcher.c, \
+))
+
+TARGETS += $(BUILD_LIBGLASS)
+
+################################################################################
+## Build libglassgtk3
+################################################################################
+
+$(info GTK_CF = $(GTK_CFLAGS))
+$(eval $(call SetupJdkLibrary, BUILD_LIBGLASSGTK3, \
+    NAME := glassgtk3, \
+    LINK_TYPE := C++, \
+    OPTIMIZATION := HIGH, \
+    CFLAGS := $(GTK_CFLAGS), \
+    CFLAGS += -I$(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-glass/gtk/libpipewire/include, \
+    EXCLUDE_FILES := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-glass/gtk/launcher.c, \
+    CXXFLAGS := $(GTK_CFLAGS), \
+    LIBS_linux := $(GTK_LIBS) -lX11 -ldl, \
+    SRC := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-glass/gtk, \
+))
+
+TARGETS += $(BUILD_LIBGLASSGTK3)
+
+
