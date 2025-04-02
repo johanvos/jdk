@@ -6,6 +6,7 @@ $(eval $(call SetupTextFileProcessing, BUILD_VERSION_JAVAFX, \
     REPLACEMENTS := \
         @@BUILD_TIMESTAMP@@ => $(BUILD_TIMESTAMP) ; \
         @@RELEASE_SUFFIX@@ => $(RELEASE_SUFFIX) ; \
+        @@RELEASE_VERSION_SHORT@@ => $(RUNTIME_VERSION) ; \
         @@VERSION@@ => $(VERSION) ; \
         @@RUNTIME_VERSION@@ => $(RUNTIME_VERSION), \
 ))

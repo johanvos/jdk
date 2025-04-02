@@ -12,14 +12,22 @@ $(call FillFindCache, $(wildcard $(TOPDIR)/src/javafx.graphics/*/native))
 ################################################################################
 
 SRC_SHARE_PRISM= $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-prism-es2
+ifeq ($(call isTargetOs, linux), true)
+   PLATFORM_SRC := $(SRC_SHARE_PRISM)/x11
+endif
+ifeq ($(call isTargetOs, macosx), true)
+   PLATFORM_SRC := $(SRC_SHARE_PRISM)/macosx
+endif
 $(eval $(call SetupJdkLibrary, BUILD_LIBPRISM, \
     NAME := prism_es2, \
     OPTIMIZATION := HIGH, \
     LIBS_linux := -lX11 -lXxf86vm -lGL, \
-    SRC := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-prism-es2/x11, \
+    LIBS_macosx := -framework AppKit -framework ApplicationServices -framework Carbon -framework OpenGL -framework QuartzCore -framework Security, \
+    SRC := $(PLATFORM_SRC), \
     EXTRA_FILES := $(SRC_SHARE_PRISM)/GLContext.c, \
     EXTRA_FILES += $(SRC_SHARE_PRISM)/GLFactory.c, \
     EXTRA_FILES += $(SRC_SHARE_PRISM)/GLPixelFormat.c, \
+    CFLAGS_macosx := -I$(SRC_SHARE_PRISM), \
     CFLAGS := -Wno-error, \
 ))
 
@@ -30,15 +38,26 @@ TARGETS += $(BUILD_LIBPRISM)
 ################################################################################
 
 SRC_SHARE_GLASS= $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-glass
+ifeq ($(call isTargetOs, linux), true)
+   EXTRA_GLASS_SRC := $(SRC_SHARE_GLASS)/gtk/launcher.c
+endif
+ifeq ($(call isTargetOs, macosx), true)
+   PLATFORM_GLASS_SRC := $(SRC_SHARE_GLASS)/mac
+endif
+
 $(eval $(call SetupJdkLibrary, BUILD_LIBGLASS, \
     NAME := glass, \
     OPTIMIZATION := HIGH, \
+    SRC := $(PLATFORM_GLASS_SRC), \
     LIBS_linux := -lX11, \
-    EXTRA_FILES := $(SRC_SHARE_GLASS)/gtk/launcher.c, \
+    LIBS_macosx := -framework AppKit -framework ApplicationServices -framework Carbon -framework OpenGL -framework QuartzCore -framework Security, \
+    EXTRA_FILES := $(EXTRA_GLASS_SRC), \
+    CFLAGS_macosx := -DMACOS_MIN_VERSION_MAJOR=11 -DMACOS_MIN_VERSION_MINOR=0, \
 ))
 
 TARGETS += $(BUILD_LIBGLASS)
 
+ifeq ($(call isTargetOs, linux), true)
 ################################################################################
 ## Build libglassgtk3
 ################################################################################
@@ -57,5 +76,62 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBGLASSGTK3, \
 ))
 
 TARGETS += $(BUILD_LIBGLASSGTK3)
+endif
 
+################################################################################
+## Build libjavafx_font
+################################################################################
 
+$(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXFONT, \
+    NAME := javafx_font, \
+    LINK_TYPE := C++, \
+    OPTIMIZATION := HIGH, \
+    SRC := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-font, \
+    LIBS_macosx := -framework AppKit -framework ApplicationServices -framework Carbon -framework OpenGL -framework QuartzCore -framework Security, \
+))
+
+TARGETS += $(BUILD_LIBJAVAFXFONT)
+
+################################################################################
+## Build libjavafx_font_freetype
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXFONTFREETYPE, \
+    NAME := javafx_font_freetype, \
+    LINK_TYPE := C++, \
+    CFLAGS := $(FREETYPE_CFLAGS) -D_ENABLE_PANGO, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := -lfreetype, \
+    EXTRA_FILES := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-font/freetype.c, \
+))
+
+TARGETS += $(BUILD_LIBJAVAFXFONTFREETYPE)
+
+################################################################################
+## Build libjavafx_font_pango
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXFONTPANGO, \
+    NAME := javafx_font_pango, \
+    LINK_TYPE := C++, \
+    CFLAGS := $(PANGO_CFLAGS) -D_ENABLE_PANGO, \
+    OPTIMIZATION := HIGH, \
+    LIBS_linux := $(PANGO_LIBS), \
+    EXTRA_FILES := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-font/pango.c, \
+))
+
+TARGETS += $(BUILD_LIBJAVAFXFONTPANGO)
+
+################################################################################
+## Build libjavafx_iio
+################################################################################
+
+$(eval $(call SetupJdkLibrary, BUILD_LIBJAVAFXIIO, \
+    NAME := javafx_iio, \
+    LINK_TYPE := C++, \
+    OPTIMIZATION := HIGH, \
+    SRC := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-iio/libjpeg, \
+    EXTRA_FILES := $(OPENJFX_MODULES_SRC)/modules/javafx.graphics/src/main/native-iio/jpegloader.c, \
+))
+
+TARGETS += $(BUILD_LIBJAVAFXIIO)

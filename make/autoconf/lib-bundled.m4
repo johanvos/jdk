@@ -327,6 +327,7 @@ AC_DEFUN_ONCE([LIB_SETUP_GTK],
   AC_MSG_CHECKING([for which gtk to use])
 
   DEFAULT_GTK=system
+
   # If user didn't specify, use DEFAULT_GTK
   if test "x${with_gtk}" = "x"; then
     with_gtk=${DEFAULT_GTK}
@@ -339,13 +340,15 @@ AC_DEFUN_ONCE([LIB_SETUP_GTK],
     AC_MSG_RESULT([bundled])
   elif test "x${with_gtk}" = "xsystem"; then
     AC_MSG_RESULT([system])
-    PKG_CHECK_MODULES([GTK], [gtk+-3.0 gthread-2.0 xtst gio-unix-2.0], [GTK_FOUND=yes], [GTK_FOUND=no])
-    if test "x${GTK_FOUND}" = "xyes"; then
-      # PKG_CHECK_MODULES will set GTK_CFLAGS and GTK_LIBS
-      USE_EXTERNAL_GTK=true
-    else
-      HELP_MSG_MISSING_DEPENDENCY([gtk])
-      AC_MSG_ERROR([--with-gtk=system specified, but no gtk found! $HELP_MSG])
+    if test "x$OPENJDK_TARGET_OS" = xlinux; then
+      PKG_CHECK_MODULES([GTK], [gtk+-3.0 gthread-2.0 xtst gio-unix-2.0], [GTK_FOUND=yes], [GTK_FOUND=no])
+      if test "x${GTK_FOUND}" = "xyes"; then
+        # PKG_CHECK_MODULES will set GTK_CFLAGS and GTK_LIBS
+        USE_EXTERNAL_GTK=true
+      else
+        HELP_MSG_MISSING_DEPENDENCY([gtk])
+        AC_MSG_ERROR([--with-gtk=system specified, but no gtk found! $HELP_MSG])
+      fi
     fi
   else
     AC_MSG_ERROR([Invalid value for --with-gtk: ${with_gtk}, use 'system' or 'bundled'])
@@ -380,13 +383,15 @@ AC_DEFUN_ONCE([LIB_SETUP_PANGO],
     AC_MSG_RESULT([bundled])
   elif test "x${with_pango}" = "xsystem"; then
     AC_MSG_RESULT([system])
-    PKG_CHECK_MODULES([PANGO], [pangoft2], [PANGO_FOUND=yes], [PANGO_FOUND=no])
-    if test "x${PANGO_FOUND}" = "xyes"; then
-      # PKG_CHECK_MODULES will set PANGO_CFLAGS and PANGO_LIBS
-      USE_EXTERNAL_PANGO=true
-    else
-      HELP_MSG_MISSING_DEPENDENCY([pango])
-      AC_MSG_ERROR([--with-pango=system specified, but no pango found! $HELP_MSG])
+    if test "x$OPENJDK_TARGET_OS" = xlinux; then
+      PKG_CHECK_MODULES([PANGO], [pangoft2], [PANGO_FOUND=yes], [PANGO_FOUND=no])
+      if test "x${PANGO_FOUND}" = "xyes"; then
+        # PKG_CHECK_MODULES will set PANGO_CFLAGS and PANGO_LIBS
+        USE_EXTERNAL_PANGO=true
+      else
+        HELP_MSG_MISSING_DEPENDENCY([pango])
+        AC_MSG_ERROR([--with-pango=system specified, but no pango found! $HELP_MSG])
+      fi
     fi
   else
     AC_MSG_ERROR([Invalid value for --with-pango: ${with_pango}, use 'system' or 'bundled'])
